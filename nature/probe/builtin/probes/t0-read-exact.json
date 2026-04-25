@@ -1,0 +1,35 @@
+{
+  "id": "t0-read-exact",
+  "title": "Emit Read tool_use for exact path",
+  "tier": 0,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "hello.txt",
+        "content": "hello world\n"
+      }
+    ]
+  },
+  "prompt": "Call the Read tool on the file `{workspace}/hello.txt` (absolute path).",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Read",
+      "input_regex": {
+        "file_path": "hello\\.txt$"
+      }
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

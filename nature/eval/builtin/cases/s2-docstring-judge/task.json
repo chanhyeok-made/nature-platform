@@ -1,0 +1,22 @@
+{
+  "id": "s2-docstring-judge",
+  "title": "Synthetic: docstring quality judged by an LLM",
+  "category": "feature",
+  "tags": ["synthetic", "python", "llm-judge", "probe"],
+  "size": "trivial",
+  "prompt": "작업 공간 루트에 있는 `utils.py` 의 `divide(a, b)` 함수에 **제대로 된 docstring** 을 추가해주세요.\n\n## 요구사항\n\nDocstring은 다음을 모두 담아야 합니다:\n- 함수가 하는 일의 한 줄 요약\n- 파라미터 `a`, `b` 의 의미와 타입\n- 반환값의 의미\n- `b == 0` 일 때 발생하는 예외(`ZeroDivisionError`) 명시\n\n구현 로직은 바꾸지 말고 **docstring만 추가**하세요.\n\n## 제약\n\n- 파일 추가 금지. `utils.py` 한 곳만 수정.\n- 외부 의존성 추가 금지.\n- Docstring 외의 어떤 코드 변경도 금지.",
+  "target": {
+    "repo": "local",
+    "ref": "HEAD"
+  },
+  "setup": {
+    "type": "apply_patch_file",
+    "patch_path": "seed.patch"
+  },
+  "acceptance": {
+    "type": "llm_judge",
+    "judge_preset": "default",
+    "rubric": "The diff should add a well-formed docstring to the `divide` function in `utils.py`. The docstring must: (1) contain a one-line summary of what the function does, (2) describe both parameters `a` and `b`, (3) describe the return value, (4) explicitly mention that `ZeroDivisionError` is raised when `b == 0`. The function body (the `return a / b` line) must be unchanged. No other code changes are permitted. Return `pass` if all four docstring elements are present AND the body is unchanged; otherwise `fail`.",
+    "timeout_sec": 180
+  }
+}

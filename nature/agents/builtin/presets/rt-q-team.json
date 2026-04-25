@@ -1,0 +1,28 @@
+{
+  "root_agent": "receptionist",
+  "agents": [
+    "receptionist",
+    "core",
+    "researcher-scout",
+    "researcher-reader",
+    "researcher-synth",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {
+    "receptionist": "anthropic::claude-haiku-4-5",
+    "core": "anthropic::claude-haiku-4-5",
+    "researcher-scout": "local-ollama::qwen2.5-coder:32b",
+    "researcher-reader": "local-ollama::qwen2.5-coder:32b",
+    "researcher-synth": "local-ollama::qwen2.5-coder:32b",
+    "analyzer": "anthropic::claude-haiku-4-5",
+    "implementer": "anthropic::claude-haiku-4-5",
+    "reviewer": "anthropic::claude-haiku-4-5",
+    "judge": "anthropic::claude-haiku-4-5"
+  },
+  "prompt_overrides": {
+    "core": "core-team"
+  }
+}

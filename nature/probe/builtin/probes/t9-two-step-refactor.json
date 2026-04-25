@@ -1,0 +1,47 @@
+{
+  "id": "t9-two-step-refactor",
+  "title": "Rename a constant across two files consistently",
+  "tier": 9,
+  "dimensions": [
+    "reasoning",
+    "edit.discipline",
+    "multi_turn_state"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Grep",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "lib/const.py",
+        "content": "MAX_ITEMS = 100\n"
+      },
+      {
+        "path": "lib/use.py",
+        "content": "from const import MAX_ITEMS\nprint(MAX_ITEMS)\n"
+      }
+    ]
+  },
+  "prompt": "Rename the constant `MAX_ITEMS` to `MAX_ENTRIES` in both files under `{workspace}/lib/`. Use Grep to locate, then Edit each file. Both files must end up consistent — the definition and the usage. Final answer: `done`.",
+  "success": [
+    {
+      "kind": "file_state",
+      "path": "lib/const.py",
+      "contains": "MAX_ENTRIES = 100"
+    },
+    {
+      "kind": "file_state",
+      "path": "lib/use.py",
+      "contains": "MAX_ENTRIES"
+    },
+    {
+      "kind": "file_state",
+      "path": "lib/const.py",
+      "regex": "^(?!.*MAX_ITEMS)"
+    }
+  ],
+  "max_turns": 8,
+  "timeout_sec": 240
+}

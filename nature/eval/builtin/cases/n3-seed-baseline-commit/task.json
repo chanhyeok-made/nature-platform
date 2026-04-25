@@ -1,0 +1,31 @@
+{
+  "id": "n3-seed-baseline-commit",
+  "title": "Eval runner: _commit_seed_baseline helper for llm_judge diff correctness",
+  "category": "feature",
+  "tags": [
+    "nature",
+    "eval-runner",
+    "git-wiring",
+    "llm-judge"
+  ],
+  "size": "medium",
+  "prompt": "nature 의 eval runner 에서 **llm_judge acceptance 경로의 심각한 정합성 버그** 를 고쳐야 합니다.\n\n## 버그 서술\n\n`_run_llm_judge_acceptance` 는 judge 에게 `git diff HEAD` 결과를 넘겨 agent의 수정사항을 평가합니다. 하지만 `apply_diff_from_commit` / `apply_patch_file` 셋업은 새 파일을 **untracked** 상태로 작업 공간에 떨어뜨릴 뿐 HEAD 에 commit 하지 않습니다. `git diff HEAD` 는 기본적으로 untracked 파일을 무시하므로, agent 가 실제로 수정을 했더라도 judge 는 **빈 diff** 를 받고 \"agent 가 아무것도 안 했다\" 로 오판합니다.\n\n## 요구사항\n\n**`nature/eval/runner.py` 에 새 모듈-레벨 헬퍼 추가**:\n\n    def _commit_seed_baseline(workspace: Path) -> None:\n        ...\n\n동작:\n1. `git -C <workspace> add -A` — 새로 생긴 파일, 수정, 삭제 전부 스테이징.\n2. throwaway identity 로 `git commit --allow-empty --no-verify --quiet -m \"eval: seed baseline\"` 실행. identity 는 `-c user.email=eval@nature -c user.name=nature-eval -c commit.gpgsign=false` 로 전달 (repo config 를 건드리지 않도록).\n3. commit 이 실패하면 `RuntimeError` 를 올려 조용한 실패를 방지 (stderr 를 에러 메시지에 포함).\n\n## 설계 의도\n\n- **`--allow-empty`** 필수: 셋업이 no-op 인 경우 (예: `SetupNone`) 에도 HEAD 를 advance 시켜 diff baseline 을 일관되게 만듭니다.\n- **`--no-verify`**: 대상 workspace 가 임시 clone/worktree 이므로 pre-commit hook 을 돌릴 이유가 없고, hook 부재로 인한 실패를 회피.\n- **`-c`-flag identity**: repo 의 `.gitconfig` 를 수정하지 않으므로 부작용 없음.\n\n## 수용 테스트\n\n`tests/test_eval_seed_baseline.py` 의 3개 테스트 전부 pass:\n1. 셋업이 심은 파일이 HEAD 에 commit 되어 `git status --porcelain` 이 비게 됨.\n2. 이후 agent 편집이 `git diff HEAD` 에 **agent 변경만** 나타남 (seed 내용은 add line 에 안 나옴).\n3. 셋업 변경이 없어도 `--allow-empty` 로 HEAD 가 한 번 전진함.\n\n## 제약\n\n- 기존 테스트 (`.venv/bin/python -m pytest -q`) 가 깨지면 안 됩니다.\n- 외부 패키지 추가 금지.\n- 함수 위치는 모듈 상위 레벨 (class 내부 X).\n- 함수 이름과 시그니처는 `_commit_seed_baseline(workspace: Path) -> None` 정확히 일치.",
+  "target": {
+    "repo": "local",
+    "ref": "41bb39f^"
+  },
+  "setup": {
+    "type": "apply_diff_from_commit",
+    "apply_commit": "7ff3615",
+    "diff_scope": [
+      "tests/test_eval_seed_baseline.py"
+    ]
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": [
+      "tests/test_eval_seed_baseline.py"
+    ],
+    "timeout_sec": 480
+  }
+}

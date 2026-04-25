@@ -1,0 +1,9 @@
+{
+  "model": "local-ollama::qwen2.5:7b",
+  "allowed_tools": [
+    "Glob",
+    "Grep"
+  ],
+  "allowed_interventions": null,
+  "instructions": "researcher-scout.md"
+}

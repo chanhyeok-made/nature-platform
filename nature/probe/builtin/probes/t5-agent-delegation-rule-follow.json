@@ -1,0 +1,38 @@
+{
+  "id": "t5-agent-delegation-rule-follow",
+  "title": "Agent delegation — do NOT do the work yourself",
+  "tier": 5,
+  "dimensions": [
+    "delegation.format",
+    "rule.follow"
+  ],
+  "allowed_tools": [
+    "Agent",
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "plan.md",
+        "content": "the plan is to write v2\n"
+      }
+    ]
+  },
+  "prompt": "There is a file `{workspace}/plan.md`. DO NOT read it yourself. Instead, delegate the reading to a sub-agent named `researcher` via the Agent tool, with a prompt like 'read {workspace}/plan.md and return its single line'. Emit exactly one tool_use (the Agent delegation) and no Read calls.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Agent",
+      "input_contains": {
+        "name": "researcher"
+      }
+    },
+    {
+      "kind": "tool_not_used",
+      "name": "Read"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

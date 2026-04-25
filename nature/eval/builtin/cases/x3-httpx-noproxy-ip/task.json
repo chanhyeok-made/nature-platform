@@ -1,0 +1,41 @@
+{
+  "id": "x3-httpx-noproxy-ip",
+  "title": "httpx: NO_PROXY must support IPv4, IPv6, CIDR and localhost entries",
+  "category": "bug-fix",
+  "tags": [
+    "external",
+    "httpx",
+    "proxy",
+    "env"
+  ],
+  "size": "medium",
+  "prompt": "외부 라이브러리 `httpx` 의 PR #2659 에 해당하는 버그를 고쳐야 합니다.\n\n## 버그 서술\n\n`httpx/_utils.py::get_environment_proxies` 는 `NO_PROXY` 환경 변수의 각 엔트리를 **무조건** `\"all://*{hostname}\"` 형태의 mount key 로 변환합니다. 이 변환은 도메인 이름에만 적절하고, 다음 케이스에서 잘못 동작합니다:\n\n- **IPv4 리터럴** (`127.0.0.1`): `all://*127.0.0.1` 이라는 유효하지 않은 패턴 생성.\n- **CIDR 표기** (`192.168.0.0/16`): 대역 매칭이 되지 않고 literal hostname 으로 취급.\n- **IPv6** (`::1`): 생성된 `all://*::1` 를 URL 파서가 `::1` 를 host + `:1` 을 port 로 오해석해 `ValueError` 발생.\n- **`localhost`**: 프리픽스된 wildcard 패턴이 hostname 매칭에 실패.\n\n## 요구사항\n\n`get_environment_proxies` 를 수정해서 각 `NO_PROXY` 엔트리 타입을 먼저 판별한 뒤 적절한 mount key 를 생성:\n\n- **IPv4 / IPv6 literal**: `all://{ip}` (wildcard 프리픽스 없이 exact hostname).\n- **CIDR**: 대역에 속하는 IP 들에 대한 매칭 (stdlib `ipaddress` 로 파싱, mount pattern 결정).\n- **`localhost`**: `all://localhost` (wildcard 프리픽스 없이).\n- **도메인**: 기존처럼 `all://*{hostname}` (서브도메인까지 cover).\n\n구체적 로직은 테스트가 명세입니다 — `tests/test_utils.py::test_get_environment_proxies` 의 신규 parametrize 케이스들이 전부 pass 하도록 만드세요.\n\n## 수용 테스트\n\n- `tests/test_utils.py::test_get_environment_proxies[environment5-proxies5]`\n- `tests/test_utils.py::test_get_environment_proxies[environment6-proxies6]`\n- `tests/test_utils.py::test_get_environment_proxies[environment7-proxies7]`\n- `tests/test_utils.py::test_get_environment_proxies[environment8-proxies8]`\n\n## 제약\n\n- 기존 `tests/` 아래 모든 테스트가 계속 통과해야 합니다.\n- public API 시그니처 변경 금지.\n- `httpx/_utils.py` 한 곳만 수정 권장. `stdlib.ipaddress` 사용 가능.",
+  "target": {
+    "repo": "https://github.com/encode/httpx.git",
+    "ref": "15d09a3bbc20372cd87e48f17f7c9381c8220a0f^"
+  },
+  "setup": {
+    "type": "git_clone_at_ref",
+    "apply_commit": "15d09a3bbc20372cd87e48f17f7c9381c8220a0f",
+    "diff_scope": [
+      "tests/test_utils.py"
+    ]
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": [
+      "tests/test_utils.py::test_get_environment_proxies[environment5-proxies5]",
+      "tests/test_utils.py::test_get_environment_proxies[environment6-proxies6]",
+      "tests/test_utils.py::test_get_environment_proxies[environment7-proxies7]",
+      "tests/test_utils.py::test_get_environment_proxies[environment8-proxies8]"
+    ],
+    "extra_args": [
+      "--noconftest",
+      "-p",
+      "no:cacheprovider",
+      "-o",
+      "filterwarnings="
+    ],
+    "timeout_sec": 420
+  }
+}

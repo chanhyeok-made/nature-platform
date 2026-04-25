@@ -1,0 +1,13 @@
+{
+  "root_agent": "receptionist",
+  "agents": [
+    "receptionist",
+    "core",
+    "researcher",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {}
+}

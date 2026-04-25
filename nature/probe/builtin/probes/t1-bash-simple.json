@@ -1,0 +1,28 @@
+{
+  "id": "t1-bash-simple",
+  "title": "Run a trivial Bash command",
+  "tier": 1,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Bash"
+  ],
+  "prompt": "Use the Bash tool to run `echo probe-check`. Report the exact stdout.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Bash",
+      "input_regex": {
+        "command": "echo probe-check"
+      }
+    },
+    {
+      "kind": "final_text",
+      "contains": "probe-check"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

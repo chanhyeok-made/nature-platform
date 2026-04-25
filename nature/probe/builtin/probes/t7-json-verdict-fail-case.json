@@ -1,0 +1,25 @@
+{
+  "id": "t7-json-verdict-fail-case",
+  "title": "Return JSON verdict when the rubric fails",
+  "tier": 7,
+  "dimensions": [
+    "structured_json",
+    "rule.follow"
+  ],
+  "allowed_tools": [],
+  "prompt": "Evaluate whether the output below passes the rubric.\n\nRubric: output must mention 'Python'.\nCandidate output: 'This was written in Rust.'\n\nReturn ONLY a JSON object with keys `passed` (boolean) and `reason` (string). No prose, no markdown fence, just the JSON.",
+  "success": [
+    {
+      "kind": "final_json",
+      "required_keys": [
+        "passed",
+        "reason"
+      ],
+      "key_equals": {
+        "passed": false
+      }
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}

@@ -1,0 +1,8 @@
+{
+  "model": "local-ollama::phi4:14b",
+  "allowed_tools": [
+    "Read"
+  ],
+  "allowed_interventions": null,
+  "instructions": "researcher-reader.md"
+}

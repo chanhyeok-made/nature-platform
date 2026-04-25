@@ -1,0 +1,31 @@
+{
+  "id": "n2-pytest-pythonpath",
+  "title": "Eval runner: AcceptancePytest.pythonpath + subprocess env propagation",
+  "category": "feature",
+  "tags": [
+    "nature",
+    "eval-runner",
+    "schema-extension",
+    "subprocess"
+  ],
+  "size": "medium",
+  "prompt": "nature의 eval runner가 `src/`-layout 외부 레포 (pluggy, attrs 등) 를 정확히 테스트하도록 고쳐야 합니다.\n\n## 버그 서술\n\n현재 `nature/eval/runner.py` 의 `_run_pytest_acceptance` 는 `subprocess.run(cmd, cwd=str(workspace), ...)` 로 pytest 를 띄우는데 `env` 인자를 넘기지 않습니다. 결과적으로 `src/`-layout 레포에서 agent가 `src/<pkg>/...` 를 수정해도 pytest 는 **ambient venv 에 설치된 복사본** 을 import 해서 agent 의 수정이 무소음으로 무시됩니다.\n\n## 요구사항\n\n1. **`nature/eval/tasks.py` 의 `AcceptancePytest` 에 새 필드 추가**\n   - `pythonpath: list[str]` (default `[]`, pydantic `Field(default_factory=list)`).\n   - workspace root 기준 상대경로 리스트.\n\n2. **`nature/eval/runner.py` 의 `_run_pytest_acceptance` 수정**\n   - `os.environ.copy()` 로 환경 복제.\n   - `spec.pythonpath` 가 비어있지 않으면 각 엔트리를 `(workspace / p).resolve()` 로 절대경로화, `os.pathsep` 으로 join.\n   - 기존 `PYTHONPATH` (ambient) 와 merge: **eval 경로가 선두**, 이후 기존 값이 뒤에 붙음 (e.g., `f\"{extra}{os.pathsep}{existing}\"` when `existing` truthy, else `extra`).\n   - `subprocess.run` 호출 시 `env=env` 전달.\n\n## 수용 테스트\n\n`tests/test_eval_pythonpath.py` 의 4개 테스트 전부 pass:\n1. `pythonpath` 기본값이 `[]`.\n2. `pythonpath=[\"src\", \"lib\"]` 를 받고 보존.\n3. subprocess.run 이 받는 env 에서 `PYTHONPATH` 가 workspace 의 resolved 경로로 시작.\n4. Ambient `PYTHONPATH` 가 있을 때 eval 경로가 선두에 오고 ambient 값이 보존됨.\n\n## 제약\n\n- 기존 테스트 (`.venv/bin/python -m pytest -q`) 가 깨지면 안 됩니다.\n- 외부 패키지 추가 금지 — `os`, `subprocess`, `sys` 등 stdlib 만 사용.\n- `AcceptancePytest` 의 다른 필드 (기존 `type`, `node_ids`, `timeout_sec`, `extra_args`) 는 변경하지 말 것.",
+  "target": {
+    "repo": "local",
+    "ref": "1667c6d^"
+  },
+  "setup": {
+    "type": "apply_diff_from_commit",
+    "apply_commit": "616c5f3",
+    "diff_scope": [
+      "tests/test_eval_pythonpath.py"
+    ]
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": [
+      "tests/test_eval_pythonpath.py"
+    ],
+    "timeout_sec": 480
+  }
+}

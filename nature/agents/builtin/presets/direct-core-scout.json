@@ -1,0 +1,15 @@
+{
+  "root_agent": "core",
+  "agents": [
+    "core",
+    "researcher",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {},
+  "prompt_overrides": {
+    "researcher": "researcher-scout"
+  }
+}

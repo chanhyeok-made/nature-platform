@@ -1,0 +1,19 @@
+{
+  "root_agent": "core",
+  "agents": [
+    "core",
+    "researcher",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {
+    "core": "local-ollama::qwen2.5:72b-instruct-q4_K_M",
+    "researcher": "local-ollama::qwen2.5:72b-instruct-q4_K_M",
+    "analyzer": "local-ollama::qwen2.5:72b-instruct-q4_K_M",
+    "implementer": "local-ollama::qwen2.5:72b-instruct-q4_K_M",
+    "reviewer": "local-ollama::qwen2.5:72b-instruct-q4_K_M",
+    "judge": "local-ollama::qwen2.5:72b-instruct-q4_K_M"
+  }
+}

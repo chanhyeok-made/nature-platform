@@ -1,0 +1,25 @@
+{
+  "id": "t2-todowrite-simple",
+  "title": "Emit TodoWrite with a small list",
+  "tier": 2,
+  "dimensions": [
+    "tool.emit",
+    "structured_json"
+  ],
+  "allowed_tools": [
+    "TodoWrite"
+  ],
+  "prompt": "Call the TodoWrite tool with 3 todos: (1) 'read spec' status=pending, (2) 'write code' status=in_progress, (3) 'run tests' status=pending. Each todo needs a `content`, `activeForm`, and `status` field.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "TodoWrite",
+      "input_regex": {
+        "todos": "(?is)read spec.*write code.*run tests"
+      }
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}

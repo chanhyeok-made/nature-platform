@@ -1,0 +1,48 @@
+diff --git a/jsonptr.py b/jsonptr.py
+new file mode 100644
+index 0000000..1a2b3c4
+--- /dev/null
++++ b/jsonptr.py
+@@ -0,0 +1,15 @@
++"""Tiny JSON Pointer (RFC 6901) resolver — three edge-case bugs.
++Fix `resolve` so `tests/test_jsonptr.py` passes."""
++
++from __future__ import annotations
++
++from typing import Any
++
++
++def resolve(doc: Any, pointer: str) -> Any:
++    assert pointer.startswith("/"), "pointer must start with /"
++    result = doc
++    for token in pointer[1:].split("/"):
++        token = token.replace("~0", "~").replace("~1", "/")
++        result = result[token]
++    return result
+diff --git a/tests/test_jsonptr.py b/tests/test_jsonptr.py
+new file mode 100644
+index 0000000..2b3c4d5
+--- /dev/null
++++ b/tests/test_jsonptr.py
+@@ -0,0 +1,21 @@
++import sys
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++from jsonptr import resolve  # noqa: E402
++
++
++def test_basic_nested_dict():
++    assert resolve({"foo": {"bar": 1}}, "/foo/bar") == 1
++
++
++def test_empty_pointer_returns_whole_document():
++    doc = {"a": 1}
++    assert resolve(doc, "") == doc
++
++
++def test_array_index_numeric_token():
++    assert resolve([10, 20, 30], "/1") == 20
++
++
++def test_escape_order_tilde_one_before_tilde_zero():
++    assert resolve({"~1": "value"}, "/~01") == "value"

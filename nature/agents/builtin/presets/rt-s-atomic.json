@@ -1,0 +1,21 @@
+{
+  "root_agent": "receptionist",
+  "agents": [
+    "receptionist",
+    "core",
+    "researcher",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {
+    "receptionist": "anthropic::claude-haiku-4-5",
+    "core": "anthropic::claude-haiku-4-5",
+    "researcher": "anthropic::claude-sonnet-4-6",
+    "analyzer": "anthropic::claude-haiku-4-5",
+    "implementer": "anthropic::claude-haiku-4-5",
+    "reviewer": "anthropic::claude-haiku-4-5",
+    "judge": "anthropic::claude-haiku-4-5"
+  }
+}

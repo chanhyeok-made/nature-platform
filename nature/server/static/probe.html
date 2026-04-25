@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nature probe</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0e0f10;
+      --fg: #e8e8e6;
+      --dim: #9c9c99;
+      --row: #1a1a1c;
+      --row-hover: #222225;
+      --accent: #6aa8ff;
+      --pass: #3ec97d;
+      --fail: #ef5b5b;
+      --err: #c67a2a;
+    }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+    }
+    code { overflow-wrap: anywhere; word-break: break-word; }
+
+    header {
+      padding: 10px 16px;
+      border-bottom: 1px solid #2a2a2c;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .t { font-weight: 600; }
+    header .link { color: var(--dim); text-decoration: none; padding: 2px 6px; border-radius: 2px; }
+    header .link.active { color: var(--fg); background: var(--row); }
+    header .link:hover { color: var(--accent); }
+    header .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    header .count { color: var(--dim); font-size: 11px; }
+
+    main {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      height: calc(100vh - 41px);
+    }
+    #runs {
+      border-right: 1px solid #2a2a2c;
+      overflow-y: auto;
+    }
+    .run {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e1e20;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .run:hover { background: var(--row-hover); }
+    .run.selected { background: var(--row); border-left: 3px solid var(--accent); padding-left: 11px; }
+    .run.combined { border-bottom: 2px solid var(--accent); background: rgba(106,168,255,0.05); }
+    .run .rid { color: var(--fg); font-weight: 600; }
+    .run .meta { color: var(--dim); font-size: 10.5px; margin-top: 2px; }
+    .run .pass {
+      color: var(--pass);
+      font-weight: 600;
+    }
+    .run .fail { color: var(--fail); }
+
+    #detail {
+      overflow-y: auto;
+      padding: 18px;
+    }
+    #detail h2 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+    }
+    #detail h3 {
+      margin: 14px 0 6px 0;
+      font-size: 13px;
+      color: var(--dim);
+    }
+    #detail .empty { color: var(--dim); padding: 30px 0; text-align: center; }
+
+    .chip {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px solid #2a2a2c;
+      border-radius: 2px;
+      font-size: 10px;
+      color: var(--dim);
+      margin-right: 4px;
+    }
+    .chip.ok { color: var(--pass); border-color: rgba(62,201,125,0.4); }
+    .chip.err { color: var(--fail); border-color: rgba(239,91,91,0.4); }
+
+    /* Role recommendation cards */
+    .role-card {
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+      padding: 10px 12px;
+      margin: 0 0 10px 0;
+      background: var(--row);
+    }
+    .role-card .role-name { font-weight: 600; font-size: 13.5px; color: var(--fg); }
+    .role-card .role-desc { color: var(--dim); font-size: 11px; margin: 2px 0 6px 0; }
+    .role-card .role-meta { color: var(--dim); font-size: 11px; }
+    .role-card .role-meta .k { color: #8b8b88; }
+    .role-card .model-rank {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .role-card .model-rank .m {
+      padding: 3px 8px;
+      background: #101012;
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .role-card .model-rank .m.current {
+      border-color: var(--accent);
+    }
+    .role-card .model-rank .m .score {
+      color: var(--dim);
+      font-size: 10.5px;
+    }
+    .role-card .model-rank .m .score.high { color: var(--pass); }
+    .role-card .model-rank .m .score.mid { color: var(--err); }
+    .role-card .model-rank .m .score.low { color: var(--fail); }
+
+    table.matrix {
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    table.matrix th, table.matrix td {
+      border: 1px solid #2a2a2c;
+      padding: 3px 6px;
+      text-align: center;
+      vertical-align: top;
+    }
+    table.matrix th {
+      background: var(--row);
+      font-weight: 600;
+      text-align: left;
+    }
+    table.matrix th.model {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      max-width: 24px;
+      padding: 6px 2px;
+      font-size: 10.5px;
+      color: var(--dim);
+    }
+    table.matrix td.pass {
+      background: rgba(62,201,125,0.15);
+      color: var(--pass);
+    }
+    table.matrix td.fail {
+      background: rgba(239,91,91,0.08);
+      color: var(--fail);
+      cursor: pointer;
+    }
+    table.matrix td.fail:hover { background: rgba(239,91,91,0.2); }
+    table.matrix td.none { color: var(--dim); }
+    table.matrix td.tier {
+      color: var(--dim);
+      font-size: 10px;
+    }
+    table.matrix tr:hover td:not(.model) { background: rgba(106,168,255,0.04); }
+
+    .model-card {
+      display: inline-block;
+      width: 290px;
+      min-width: 290px;
+      margin: 4px 4px 4px 0;
+      padding: 10px 12px;
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+      background: var(--row);
+      vertical-align: top;
+    }
+    .model-card .name { font-weight: 600; margin-bottom: 4px; }
+    .model-card .rate { font-size: 13px; color: var(--pass); margin: 4px 0; }
+    .model-card .rate.low { color: var(--fail); }
+    .model-card .rate.mid { color: var(--err); }
+    .model-card .tier-row { font-size: 10.5px; color: var(--dim); line-height: 1.55; }
+    .model-card .tier-row .ceil {
+      font-weight: 600; color: var(--fg); font-size: 11px;
+    }
+    .model-cards-wrap { overflow-x: auto; white-space: nowrap; padding-bottom: 4px; }
+
+    .cell-panel {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 1px solid #2a2a2c;
+      border-left: 2px solid var(--accent);
+      background: var(--row);
+      border-radius: 2px;
+    }
+    .cell-panel .hdr {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .cell-panel .hdr .title { font-weight: 600; }
+    .cell-panel .crit {
+      font-size: 11px;
+      padding: 3px 6px;
+      border-left: 2px solid #2a2a2c;
+      margin: 3px 0;
+    }
+    .cell-panel .crit.pass { border-left-color: var(--pass); }
+    .cell-panel .crit.fail { border-left-color: var(--fail); }
+    .cell-panel pre {
+      background: var(--bg);
+      padding: 6px 8px;
+      border: 1px solid #2a2a2c;
+      font-size: 11px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 2px;
+    }
+    .cell-panel details summary {
+      cursor: pointer;
+      color: var(--dim);
+      font-size: 11px;
+      padding: 4px 0;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 41px); }
+      #runs {
+        border-right: none;
+        border-bottom: 1px solid #2a2a2c;
+        max-height: 28vh;
+      }
+      #detail { padding: 12px; }
+      header { padding: 8px 10px; font-size: 12px; gap: 8px; }
+      header .count { display: none; }
+      /* Matrix headers: rotate only when column count ≤ 6, else
+         keep horizontal and let the table scroll horizontally. */
+      table.matrix th.model {
+        writing-mode: horizontal-tb;
+        max-width: none;
+        font-size: 10px;
+        padding: 3px 4px;
+      }
+      table.matrix { font-size: 10.5px; }
+      table.matrix th, table.matrix td { padding: 2px 4px; }
+      /* Model cards: smaller + tighter so two fit on most phone widths. */
+      .model-card {
+        width: 250px;
+        min-width: 250px;
+        padding: 8px 10px;
+      }
+      .model-card .rate { font-size: 12px; }
+      .model-card .tier-row { font-size: 10px; }
+      .cell-panel { padding: 8px 10px; margin-top: 10px; }
+      .cell-panel .hdr { font-size: 11px; }
+      .cell-panel .crit { font-size: 10.5px; padding: 3px 5px; }
+      .cell-panel pre { max-height: 200px; font-size: 10.5px; }
+      /* The detail pane itself already flexes, but any descendant
+         with flex/grid defaults to min-width:auto — clamp so long
+         tool_use input previews can't push the viewport. */
+      #detail * { min-width: 0; }
+    }
+    @media (max-width: 500px) {
+      #runs { max-height: 24vh; }
+      header .link { padding: 2px 4px; font-size: 11px; }
+      .model-card { width: 230px; min-width: 230px; }
+      table.matrix th { font-size: 9.5px; }
+      .chip { font-size: 9px; padding: 1px 3px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="t">nature</span>
+    <a class="link" href="/">dashboard</a>
+    <a class="link" href="/eval">eval</a>
+    <a class="link active" href="/probe">probe</a>
+    <div class="right">
+      <span class="count" id="count"></span>
+    </div>
+  </header>
+  <main>
+    <aside id="runs"><div class="empty">loading…</div></aside>
+    <section id="detail"><div class="empty">Select a run (or "All runs combined") to view the matrix.</div></section>
+  </main>
+
+<script>
+let RUNS = [];
+let PROBES_BY_ID = {};
+let SELECTED_RUN_ID = null;  // "combined" for the merged view
+let INTERNAL_HASH_WRITE = false;
+
+// ─── URL hash state ────────────────────────────────────────────
+//   #run=<run_id | combined>
+//   #run=...&cell=<probe_id>|<model_ref>
+// Pasting a link lands on that run/cell directly; clicking around
+// rewrites the hash. Mirrors eval.html's pattern.
+
+function parseHashState() {
+  const h = (location.hash || "").replace(/^#/, "");
+  const params = new URLSearchParams(h);
+  const cellRaw = params.get("cell") || "";
+  const [probe, model] = cellRaw.split("|");
+  return {
+    runId: params.get("run") || null,
+    probe: probe || null,
+    model: model || null,
+  };
+}
+
+function writeHashState(patch) {
+  const cur = parseHashState();
+  const next = Object.assign({}, cur, patch || {});
+  const params = new URLSearchParams();
+  if (next.runId) params.set("run", next.runId);
+  if (next.probe && next.model) params.set("cell", `${next.probe}|${next.model}`);
+  INTERNAL_HASH_WRITE = true;
+  const newHash = params.toString();
+  if (newHash !== location.hash.replace(/^#/, "")) {
+    location.hash = newHash;
+  }
+  setTimeout(() => { INTERNAL_HASH_WRITE = false; }, 0);
+}
+
+window.addEventListener("hashchange", () => {
+  if (INTERNAL_HASH_WRITE) return;
+  applyHashState();
+});
+
+async function applyHashState() {
+  const s = parseHashState();
+  if (!s.runId) return;
+  if (SELECTED_RUN_ID !== s.runId) {
+    await selectRun(s.runId);
+  }
+  if (s.probe && s.model) {
+    // Trigger cell-panel render by clicking the matching td.
+    // Avoid CSS.escape on the attribute value — model refs contain
+    // `::` and `:` which CSS.escape turns into `\3A` sequences,
+    // and the attribute-value match is a plain string comparison
+    // that silently falls back to "first cell in row" when the
+    // escaped value doesn't match. Scan data attrs directly.
+    await new Promise(r => setTimeout(r, 80));
+    let td = null;
+    for (const cell of document.querySelectorAll("table.matrix td[data-probe]")) {
+      if (cell.dataset.probe === s.probe && cell.dataset.model === s.model) {
+        td = cell;
+        break;
+      }
+    }
+    if (td) {
+      td.click();
+      td.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function fmtTs(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts * 1000);
+  return d.toLocaleString();
+}
+
+function shortModel(m) {
+  return String(m).split("::").pop().replace("-instruct-q4_K_M", "");
+}
+
+async function loadRuns() {
+  const [runsR, probesR] = await Promise.all([
+    fetch("/api/probe/runs").then(r => r.json()),
+    fetch("/api/probe/probes").then(r => r.json()),
+  ]);
+  RUNS = runsR.runs || [];
+  PROBES_BY_ID = {};
+  for (const p of probesR.probes || []) PROBES_BY_ID[p.id] = p;
+  document.getElementById("count").textContent = `${RUNS.length} runs · ${Object.keys(PROBES_BY_ID).length} probes`;
+  renderRunList();
+  // Honor URL hash state if present (e.g. shared link); else default
+  // to the combined view.
+  const hashed = parseHashState();
+  if (hashed.runId) {
+    await applyHashState();
+  } else {
+    selectRun("combined");
+  }
+}
+
+function renderRunList() {
+  const runs = document.getElementById("runs");
+  if (!RUNS.length) {
+    runs.innerHTML = `<div class="empty">No probe runs yet.<br/>Run <code>nature probe run --model MODEL</code>.</div>`;
+    return;
+  }
+  const parts = [];
+  parts.push(`<div class="run ${SELECTED_RUN_ID==='roles'?'selected':''}" data-run="roles" style="border-bottom: 1px solid var(--accent); background: rgba(106,168,255,0.07)">
+    <div class="rid">📊 Role recommendations</div>
+    <div class="meta">which model fits which nature role</div>
+  </div>`);
+  parts.push(`<div class="run ${SELECTED_RUN_ID==='models'?'selected':''}" data-run="models" style="border-bottom: 2px solid var(--accent); background: rgba(106,168,255,0.07)">
+    <div class="rid">🔍 Model dossiers</div>
+    <div class="meta">per-model profile: strengths, failures, fit</div>
+  </div>`);
+  parts.push(`<div class="run combined ${SELECTED_RUN_ID==='combined'?'selected':''}" data-run="combined">
+    <div class="rid">All runs combined</div>
+    <div class="meta">latest-wins per (probe × model)</div>
+  </div>`);
+  for (const r of RUNS.slice().reverse()) {
+    const total = (r.cells || 0) || (r.probes && r.models ? r.probes * r.models : 0);
+    const passText = r.pass_count != null
+      ? `<span class="pass">${r.pass_count}</span>/${total}`
+      : `${total} cells`;
+    parts.push(`<div class="run ${SELECTED_RUN_ID===r.run_id?'selected':''}" data-run="${esc(r.run_id)}">
+      <div class="rid">${esc(r.run_id)}</div>
+      <div class="meta">${fmtTs(r.started_at)}</div>
+      <div class="meta">${passText} · ${r.models||0}m × ${r.probes||0}p</div>
+      ${r.notes ? `<div class="meta" style="font-style:italic">${esc((r.notes||"").slice(0,80))}</div>` : ""}
+    </div>`);
+  }
+  runs.innerHTML = parts.join("");
+  for (const el of runs.querySelectorAll(".run")) {
+    el.addEventListener("click", () => selectRun(el.dataset.run));
+  }
+}
+
+async function selectRun(id) {
+  SELECTED_RUN_ID = id;
+  renderRunList();
+  writeHashState({ runId: id, probe: null, model: null });
+  const detail = document.getElementById("detail");
+  detail.innerHTML = `<div class="empty">loading…</div>`;
+  try {
+    if (id === "roles") {
+      const r = await fetch("/api/probe/combined");
+      if (!r.ok) { detail.innerHTML = `<div class="empty">load failed (${r.status})</div>`; return; }
+      const doc = await r.json();
+      renderRoles(doc);
+      return;
+    }
+    if (id === "models" || (id && id.startsWith("model:"))) {
+      const r = await fetch("/api/probe/combined");
+      if (!r.ok) { detail.innerHTML = `<div class="empty">load failed (${r.status})</div>`; return; }
+      const doc = await r.json();
+      if (id === "models") {
+        renderModelsList(doc);
+      } else {
+        renderModelDossier(doc, id.slice("model:".length));
+      }
+      return;
+    }
+    const url = id === "combined" ? "/api/probe/combined" : `/api/probe/runs/${encodeURIComponent(id)}`;
+    const r = await fetch(url);
+    if (!r.ok) { detail.innerHTML = `<div class="empty">load failed (${r.status})</div>`; return; }
+    const doc = await r.json();
+    renderDetail(id, doc);
+  } catch (e) {
+    detail.innerHTML = `<div class="empty">error: ${esc(String(e))}</div>`;
+  }
+}
+
+// Role taxonomy — which dimensions matter for each nature role.
+// Derived from agent definitions in nature/agents/builtin/*.json.
+// Weights are the relative importance of each dimension for the role
+// (sum doesn't have to equal 1; scoring uses weighted avg).
+const ROLES = {
+  "core": {
+    desc: "Orchestrator — delegates to sub-agents, tracks todos",
+    tools: ["Agent", "TodoWrite"],
+    dims: { "delegation.format": 3, "tool.emit": 2, "multi_turn_state": 2 },
+    default_model: "anthropic::claude-sonnet-4-6",
+  },
+  "receptionist": {
+    desc: "Entry point — routes incoming requests to core",
+    tools: ["Agent"],
+    dims: { "delegation.format": 3, "tool.emit": 1 },
+    default_model: "anthropic::claude-haiku-4-5",
+  },
+  "researcher": {
+    desc: "Gathers context — reads files, searches the web",
+    tools: ["Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch"],
+    dims: { "tool.emit": 2, "tool.result.consume": 3, "reasoning": 1 },
+    default_model: "anthropic::claude-haiku-4-5",
+  },
+  "analyzer": {
+    desc: "Diagnoses — reads code, runs commands, synthesizes findings",
+    tools: ["Read", "Glob", "Grep", "Bash"],
+    dims: { "tool.emit": 2, "tool.result.consume": 3, "multi_turn_state": 2 },
+    default_model: "anthropic::claude-sonnet-4-6",
+  },
+  "implementer": {
+    desc: "Writes code — edits files with precision, preserves existing",
+    tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "TodoWrite"],
+    dims: { "edit.discipline": 3, "multi_turn_state": 2, "tool.emit": 1, "reasoning": 2 },
+    default_model: "anthropic::claude-sonnet-4-6",
+  },
+  "reviewer": {
+    desc: "Cross-checks — reads diff context, runs verifications",
+    tools: ["Read", "Grep", "Bash", "Glob"],
+    dims: { "tool.emit": 1, "tool.result.consume": 2, "reasoning": 2 },
+    default_model: "anthropic::claude-haiku-4-5",
+  },
+  "judge": {
+    desc: "Verdict — inspects output, emits structured pass/fail JSON",
+    tools: ["Read", "Grep", "Bash"],
+    dims: { "structured_json": 3, "rule.follow": 2, "tool.emit": 1 },
+    default_model: "anthropic::claude-haiku-4-5",
+  },
+};
+
+function scoreModelsForDims(dims, cells) {
+  // Weighted sum of per-dimension pass rates.
+  // Each probe contributes to every dim it's tagged with, so a
+  // multi-dim probe weighs more when its dims overlap the role.
+  const perModel = {};
+  const dimKeys = Object.keys(dims);
+  for (const c of cells) {
+    const p = PROBES_BY_ID[c.probe_id];
+    if (!p) continue;
+    const relevant = (p.dimensions || []).filter(d => dimKeys.includes(d));
+    if (!relevant.length) continue;
+    const weight = relevant.reduce((s, d) => s + (dims[d] || 0), 0);
+    if (!perModel[c.model_ref]) perModel[c.model_ref] = { w: 0, pass_w: 0, probes: 0 };
+    perModel[c.model_ref].w += weight;
+    perModel[c.model_ref].probes += 1;
+    if (c.passed) perModel[c.model_ref].pass_w += weight;
+  }
+  return Object.entries(perModel)
+    .filter(([_, v]) => v.w > 0)
+    .map(([m, v]) => ({ model: m, rate: v.pass_w / v.w, probes: v.probes }))
+    .sort((a, b) => b.rate - a.rate);
+}
+
+// Pricing for cost estimates. Per-million-token rates; local-ollama
+// is effectively free (electricity only). Kept rough — $/1M in/out.
+const MODEL_COSTS = {
+  "anthropic::claude-sonnet-4-6": { in: 3.00, out: 15.00 },
+  "anthropic::claude-haiku-4-5":  { in: 1.00, out:  5.00 },
+  "anthropic::claude-opus-4-7":   { in: 15.00, out: 75.00 },
+};
+
+function modelCost(model, tokens_in, tokens_out) {
+  const p = MODEL_COSTS[model];
+  if (!p) return 0;
+  return (tokens_in * p.in + tokens_out * p.out) / 1_000_000;
+}
+
+function renderModelsList(doc) {
+  const cells = doc.cells || [];
+  const models = doc.models || [];
+  const d = document.getElementById("detail");
+  const stats = {};
+  for (const m of models) {
+    const ms = cells.filter(c => c.model_ref === m);
+    const tokensIn = ms.reduce((s, c) => s + (c.tokens_in || 0), 0);
+    const tokensOut = ms.reduce((s, c) => s + (c.tokens_out || 0), 0);
+    const cost = modelCost(m, tokensIn, tokensOut);
+    stats[m] = {
+      pass: ms.filter(c => c.passed).length,
+      total: ms.length,
+      tokensIn, tokensOut, cost,
+      medianLatency: medianOf(ms.map(c => c.latency_ms || 0)),
+    };
+  }
+  const ordered = models.slice().sort((a, b) => (stats[b].pass/stats[b].total||0) - (stats[a].pass/stats[a].total||0));
+  const parts = [
+    `<h2>Model dossiers</h2>`,
+    `<div style="color:var(--dim); font-size:11.5px; margin-bottom:14px">`,
+    `${models.length} models · click any card for detailed profile (failures, role fit, cost).`,
+    `</div>`,
+    `<div class="model-cards-wrap">`,
+  ];
+  for (const m of ordered) {
+    const s = stats[m];
+    const rate = s.total ? s.pass / s.total : 0;
+    const rateClass = rate >= 0.7 ? "" : rate >= 0.4 ? "mid" : "low";
+    const costTxt = s.cost > 0 ? `$${s.cost.toFixed(4)}` : "(local)";
+    parts.push(`<div class="model-card" data-dossier="${esc(m)}" style="cursor:pointer">
+      <div class="name">${esc(shortModel(m))}</div>
+      <div class="rate ${rateClass}">${s.pass}/${s.total} <span style="color:var(--dim); font-size:11px">(${Math.round(100*rate)}%)</span></div>
+      <div class="tier-row">median ${Math.round(s.medianLatency/1000)}s · ${costTxt}</div>
+    </div>`);
+  }
+  parts.push(`</div>`);
+  d.innerHTML = parts.join("");
+  d.querySelectorAll(".model-card[data-dossier]").forEach(el => {
+    el.addEventListener("click", () => selectRun("model:" + el.dataset.dossier));
+  });
+}
+
+function medianOf(arr) {
+  if (!arr.length) return 0;
+  const s = arr.slice().sort((a,b)=>a-b);
+  return s[Math.floor(s.length/2)];
+}
+
+// Human-friendly labels for dimension keys.
+const DIM_LABELS = {
+  "tool.emit": "툴 호출 방출",
+  "tool.result.consume": "툴 결과 해석",
+  "multi_turn_state": "멀티턴 상태 유지",
+  "edit.discipline": "정확한 파일 편집",
+  "delegation.format": "서브에이전트 위임",
+  "structured_json": "JSON 구조화 출력",
+  "rule.follow": "지시사항 준수",
+  "reasoning": "추론",
+  "conditional": "조건부 실행",
+  "text_baseline": "기본 텍스트 응답",
+  "long_context": "긴 컨텍스트 처리",
+};
+
+function renderModelDossier(doc, modelRef) {
+  const cells = (doc.cells || []).filter(c => c.model_ref === modelRef);
+  const d = document.getElementById("detail");
+  if (!cells.length) {
+    d.innerHTML = `<h2>${esc(shortModel(modelRef))}</h2><div class="empty">No data for this model.</div>`;
+    return;
+  }
+
+  const tokensIn = cells.reduce((s, c) => s + (c.tokens_in || 0), 0);
+  const tokensOut = cells.reduce((s, c) => s + (c.tokens_out || 0), 0);
+  const cost = modelCost(modelRef, tokensIn, tokensOut);
+  const passes = cells.filter(c => c.passed).length;
+  const total = cells.length;
+  const medLat = medianOf(cells.map(c=>c.latency_ms||0));
+
+  // ── Tier profile ────────────────────────────────────────────
+  const byTier = {};
+  for (const c of cells) {
+    const p = PROBES_BY_ID[c.probe_id];
+    const t = p ? p.tier : 0;
+    if (!byTier[t]) byTier[t] = { pass: 0, total: 0 };
+    byTier[t].total += 1;
+    if (c.passed) byTier[t].pass += 1;
+  }
+  let passCeil = -1, attemptCeil = -1, topAny = -1;
+  const tiers = Object.keys(byTier).map(Number).sort((a,b)=>a-b);
+  for (const t of tiers) {
+    const r = byTier[t].pass / Math.max(1, byTier[t].total);
+    if (r >= 0.8) passCeil = t; else break;
+  }
+  for (const t of tiers) {
+    const r = byTier[t].pass / Math.max(1, byTier[t].total);
+    if (r >= 0.5) attemptCeil = Math.max(attemptCeil, t);
+    if (byTier[t].pass > 0) topAny = Math.max(topAny, t);
+  }
+
+  // ── Per-dimension pass rates (sorted desc by rate) ──────────
+  const dimStats = {};
+  for (const c of cells) {
+    const p = PROBES_BY_ID[c.probe_id];
+    if (!p) continue;
+    for (const dim of (p.dimensions || [])) {
+      if (!dimStats[dim]) dimStats[dim] = { p: 0, t: 0 };
+      dimStats[dim].t += 1;
+      if (c.passed) dimStats[dim].p += 1;
+    }
+  }
+  const sortedDims = Object.entries(dimStats)
+    .sort((a,b) => (b[1].p/b[1].t) - (a[1].p/a[1].t));
+  const strongDims = sortedDims.filter(([_,v]) => v.p/v.t >= 0.7);
+  const partialDims = sortedDims.filter(([_,v]) => v.p/v.t >= 0.4 && v.p/v.t < 0.7);
+  const weakDims = sortedDims.filter(([_,v]) => v.p/v.t < 0.4 && v.t >= 2);
+
+  // ── Tool-level reliability (Read, Edit, etc. — which tools does it actually use well?) ──
+  const toolStats = {};
+  for (const c of cells) {
+    const p = PROBES_BY_ID[c.probe_id];
+    if (!p) continue;
+    // Attribute cell to every tool the probe allows — coarse but informative.
+    for (const tool of (p.allowed_tools || [])) {
+      if (!toolStats[tool]) toolStats[tool] = { p: 0, t: 0 };
+      toolStats[tool].t += 1;
+      if (c.passed) toolStats[tool].p += 1;
+    }
+  }
+  const toolRows = Object.entries(toolStats)
+    .sort((a,b) => (b[1].p/b[1].t) - (a[1].p/a[1].t))
+    .map(([tool, v]) => {
+      const pct = v.t ? Math.round(100 * v.p / v.t) : 0;
+      const cls = pct >= 70 ? "high" : pct >= 40 ? "mid" : "low";
+      return `<div style="display:flex; gap:8px; padding:3px 0; align-items:center">
+        <div style="width:110px"><code>${esc(tool)}</code></div>
+        <div style="width:70px"><span class="score ${cls}">${pct}%</span></div>
+        <div style="color:var(--dim); font-size:11px">${v.p}/${v.t} 통과</div>
+      </div>`;
+    }).join("");
+
+  // ── Chain length (actual tool_uses emitted) ───────────────
+  // Bucket probes by the model's actual tool-use count: 0 (text-only),
+  // 1 (single call), 2-3 (short chain), 4-6 (medium), 7+ (long chain).
+  const chainBuckets = [
+    { label: "0 툴 (텍스트)",   min: 0, max: 0 },
+    { label: "1 툴",             min: 1, max: 1 },
+    { label: "2-3 툴 체인",      min: 2, max: 3 },
+    { label: "4-6 툴 체인",      min: 4, max: 6 },
+    { label: "7+ 툴 체인",       min: 7, max: 999 },
+  ];
+  const chainStats = chainBuckets.map(b => ({ ...b, p: 0, t: 0 }));
+  for (const c of cells) {
+    const n = (c.trace && c.trace.tool_uses ? c.trace.tool_uses.length : 0);
+    const bucket = chainStats.find(b => n >= b.min && n <= b.max);
+    if (!bucket) continue;
+    bucket.t += 1;
+    if (c.passed) bucket.p += 1;
+  }
+  const chainRows = chainStats.filter(b => b.t > 0).map(b => {
+    const pct = b.t ? Math.round(100 * b.p / b.t) : 0;
+    const cls = pct >= 70 ? "high" : pct >= 40 ? "mid" : "low";
+    return `<div style="display:flex; gap:8px; padding:3px 0">
+      <div style="width:140px">${b.label}</div>
+      <div style="width:70px"><span class="score ${cls}">${pct}%</span></div>
+      <div style="color:var(--dim); font-size:11px">${b.p}/${b.t}</div>
+    </div>`;
+  }).join("");
+
+  // ── Role fit (positive framing) ────────────────────────────
+  const roleRows = Object.entries(ROLES).map(([role, info]) => {
+    const dimKeys = Object.keys(info.dims);
+    let w = 0, pw = 0;
+    for (const c of cells) {
+      const p = PROBES_BY_ID[c.probe_id];
+      if (!p) continue;
+      const rel = (p.dimensions || []).filter(dk => dimKeys.includes(dk));
+      if (!rel.length) continue;
+      const weight = rel.reduce((s, dk) => s + (info.dims[dk]||0), 0);
+      w += weight;
+      if (c.passed) pw += weight;
+    }
+    const pct = w ? Math.round(100 * pw / w) : 0;
+    const verdict = pct >= 80 ? "잘 맞음" : pct >= 60 ? "맞는 편" : pct >= 40 ? "부분 적합" : "부적합";
+    const cls = pct >= 70 ? "high" : pct >= 40 ? "mid" : "low";
+    const isCurrent = info.default_model === modelRef;
+    return { role, pct, cls, isCurrent, verdict, desc: info.desc };
+  }).sort((a, b) => b.pct - a.pct);
+  const roleRowsHtml = roleRows.map(r =>
+    `<div style="display:flex; gap:8px; padding:4px 0; ${r.isCurrent ? 'border-left:2px solid var(--accent); padding-left:6px;' : ''} align-items:center">
+      <div style="width:130px; font-weight:500">${esc(r.role)}${r.isCurrent?' <span style="color:var(--accent); font-size:10px">(default)</span>':''}</div>
+      <div style="width:70px"><span class="score ${r.cls}">${r.pct}%</span></div>
+      <div style="width:80px; color:var(--dim); font-size:11px">${r.verdict}</div>
+      <div style="color:var(--dim); font-size:11px">${esc(r.desc)}</div>
+    </div>`
+  ).join("");
+
+  // ── Dimension rows (with human labels, positive headers) ───
+  const dimRowHtml = (pairs) => pairs.map(([dim, v]) => {
+    const pct = v.t ? Math.round(100 * v.p / v.t) : 0;
+    const cls = pct >= 70 ? "high" : pct >= 40 ? "mid" : "low";
+    const label = DIM_LABELS[dim] || dim;
+    return `<div style="display:flex; gap:8px; padding:3px 0; align-items:center">
+      <div style="width:180px">${esc(label)} <span style="color:var(--dim); font-size:10.5px">${esc(dim)}</span></div>
+      <div style="width:70px"><span class="score ${cls}">${pct}%</span></div>
+      <div style="color:var(--dim); font-size:11px">${v.p}/${v.t}</div>
+    </div>`;
+  }).join("");
+
+  const backLink = `<a href="#" onclick="selectRun('models'); return false;" style="color:var(--accent)">← 모델 목록</a>`;
+
+  // Compose summary line
+  const summaryRate = Math.round(100 * passes / total);
+  const overallCls = summaryRate >= 70 ? "" : summaryRate >= 40 ? "mid" : "low";
+
+  d.innerHTML = `
+    <h2>${esc(shortModel(modelRef))}</h2>
+    <div style="color:var(--dim); font-size:11.5px; margin-bottom:14px">
+      ${esc(modelRef)} · ${backLink}
+    </div>
+
+    <div class="model-cards-wrap">
+      <div class="model-card">
+        <div class="name">통과율</div>
+        <div class="rate ${overallCls}">${passes}/${total} <span style="color:var(--dim); font-size:11px">(${summaryRate}%)</span></div>
+      </div>
+      <div class="model-card">
+        <div class="name">티어 도달</div>
+        <div class="rate">T${Math.max(passCeil, 0)} 안정</div>
+        <div class="tier-row">T${Math.max(attemptCeil, 0)} 시도 · T${Math.max(topAny, 0)} 최고</div>
+      </div>
+      <div class="model-card">
+        <div class="name">레이턴시</div>
+        <div class="rate">${(medLat/1000).toFixed(1)}s</div>
+        <div class="tier-row">중앙값</div>
+      </div>
+      <div class="model-card">
+        <div class="name">비용</div>
+        <div class="rate">${cost > 0 ? '$'+cost.toFixed(4) : 'local'}</div>
+        <div class="tier-row">${(tokensIn/1000).toFixed(1)}K in · ${(tokensOut/1000).toFixed(1)}K out</div>
+      </div>
+    </div>
+
+    <h3>🎯 최적합 역할</h3>
+    ${roleRowsHtml}
+
+    <h3>✅ 잘 하는 것 <span style="color:var(--dim); font-weight:normal; font-size:11px">(≥70%)</span></h3>
+    ${strongDims.length ? dimRowHtml(strongDims) : '<div style="color:var(--dim); padding:4px 0">해당 없음</div>'}
+
+    ${partialDims.length ? `<h3>🟡 어느정도 하는 것 <span style="color:var(--dim); font-weight:normal; font-size:11px">(40-70%)</span></h3>${dimRowHtml(partialDims)}` : ''}
+
+    ${weakDims.length ? `<h3>⚠️ 약한 것 <span style="color:var(--dim); font-weight:normal; font-size:11px">(&lt;40%)</span></h3>${dimRowHtml(weakDims)}` : ''}
+
+    <h3>🔧 툴별 안정성</h3>
+    <div style="color:var(--dim); font-size:11px; margin-bottom:4px">이 툴을 쓰는 probe들의 통과율</div>
+    ${toolRows || '<div class="empty">no data</div>'}
+
+    <h3>🔗 체인 길이별 성공률</h3>
+    <div style="color:var(--dim); font-size:11px; margin-bottom:4px">probe가 허용한 툴 개수별 통과율 — 복합 워크플로우 감당 능력</div>
+    ${chainRows || '<div class="empty">no data</div>'}
+  `;
+}
+
+function renderRoles(doc) {
+  const cells = doc.cells || [];
+  const d = document.getElementById("detail");
+  const parts = [
+    `<h2>Role recommendations</h2>`,
+    `<div style="color:var(--dim); font-size:11.5px; margin-bottom:14px">`,
+    `Each role's best-fit models, ranked by weighted pass rate on the dimensions that matter for that role.`,
+    `Data: ${cells.length} cells across ${(doc.models||[]).length} models. Click a model chip to view its matrix.`,
+    `</div>`,
+  ];
+
+  for (const [role, info] of Object.entries(ROLES)) {
+    const ranked = scoreModelsForDims(info.dims, cells).slice(0, 6);
+    const dimsText = Object.entries(info.dims)
+      .map(([d, w]) => `${d}×${w}`).join("  ");
+    const defaultShort = shortModel(info.default_model);
+    const chips = ranked.map(r => {
+      const pct = Math.round(100 * r.rate);
+      const cls = pct >= 70 ? "high" : pct >= 40 ? "mid" : "low";
+      const isCurrent = r.model === info.default_model;
+      const mk = shortModel(r.model);
+      return `<div class="m ${isCurrent?'current':''}" data-model="${esc(r.model)}">
+        ${esc(mk)}
+        <span class="score ${cls}">${pct}%</span>
+      </div>`;
+    }).join("");
+    parts.push(`
+      <div class="role-card">
+        <div class="role-name">${esc(role)}</div>
+        <div class="role-desc">${esc(info.desc)}</div>
+        <div class="role-meta"><span class="k">tools:</span> ${esc(info.tools.join(", "))}</div>
+        <div class="role-meta"><span class="k">dims:</span> ${esc(dimsText)}</div>
+        <div class="role-meta"><span class="k">current default:</span> ${esc(defaultShort)}</div>
+        <div class="model-rank">${chips || '<span style="color:var(--dim)">no data</span>'}</div>
+      </div>
+    `);
+  }
+
+  d.innerHTML = parts.join("");
+
+  // Click a chip → jump to combined view with that model highlighted.
+  d.querySelectorAll(".role-card .m[data-model]").forEach(el => {
+    el.addEventListener("click", () => {
+      const m = el.dataset.model;
+      selectRun("combined").then(() => {
+        // scroll to model column in matrix (optional; basic no-op fine)
+      });
+    });
+  });
+}
+
+function renderDetail(id, doc) {
+  const cells = doc.cells || [];
+  const models = doc.models || [...new Set(cells.map(c => c.model_ref))];
+  const probeIds = doc.probe_ids && doc.probe_ids.length
+    ? doc.probe_ids
+    : [...new Set(cells.map(c => c.probe_id))];
+
+  const byKey = {};
+  for (const c of cells) byKey[`${c.probe_id}|${c.model_ref}`] = c;
+
+  // Per-model rollups
+  const perModel = {};
+  for (const m of models) {
+    const ms = cells.filter(c => c.model_ref === m);
+    perModel[m] = {
+      pass: ms.filter(c => c.passed).length,
+      total: ms.length,
+      byTier: {},
+      topAny: -1,
+      attemptCeil: -1,
+      passCeil: -1,
+    };
+  }
+  for (const c of cells) {
+    const p = PROBES_BY_ID[c.probe_id];
+    const tier = p ? p.tier : 0;
+    const rec = perModel[c.model_ref];
+    if (!rec.byTier[tier]) rec.byTier[tier] = [];
+    rec.byTier[tier].push(c.passed);
+  }
+  for (const m of models) {
+    const rec = perModel[m];
+    const tiers = Object.keys(rec.byTier).map(Number).sort((a,b)=>a-b);
+    // pass_ceil contiguous ≥80%
+    for (const t of tiers) {
+      const v = rec.byTier[t];
+      const rate = v.filter(x=>x).length / Math.max(1, v.length);
+      if (rate >= 0.8) rec.passCeil = t;
+      else break;
+    }
+    // attempt_ceil ≥50%
+    for (const t of tiers) {
+      const v = rec.byTier[t];
+      const rate = v.filter(x=>x).length / Math.max(1, v.length);
+      if (rate >= 0.5) rec.attemptCeil = Math.max(rec.attemptCeil, t);
+    }
+    // top_any
+    for (const t of tiers) {
+      if (rec.byTier[t].some(x=>x)) rec.topAny = Math.max(rec.topAny, t);
+    }
+  }
+
+  // Title
+  const title = id === "combined"
+    ? `All runs combined (latest-wins)`
+    : id;
+  const subtitle = id === "combined"
+    ? `Source runs: ${(doc.source_runs||[]).length}`
+    : (doc.notes ? esc(doc.notes) : "");
+
+  const d = document.getElementById("detail");
+  d.innerHTML = `
+    <h2>${esc(title)}</h2>
+    <div style="color:var(--dim); font-size:11.5px; margin-bottom:10px">${subtitle}</div>
+    <div>${esc(cells.length)} cells · ${esc(models.length)} models · ${esc(probeIds.length)} probes</div>
+
+    <h3>Per-model tier profile</h3>
+    <div class="model-cards-wrap">${models.map(m => modelCardHtml(m, perModel[m])).join("")}</div>
+
+    <h3>Matrix (probe × model)</h3>
+    <div style="overflow-x:auto">
+      ${matrixHtml(models, probeIds, byKey)}
+    </div>
+
+    <div id="cell-panel-slot"></div>
+  `;
+
+  // Wire cell clicks to cell-panel + URL hash
+  d.querySelectorAll("table.matrix td.fail, table.matrix td.pass").forEach(td => {
+    td.addEventListener("click", () => {
+      const probe = td.dataset.probe;
+      const model = td.dataset.model;
+      const cell = byKey[`${probe}|${model}`];
+      if (!cell) return;
+      const slot = document.getElementById("cell-panel-slot");
+      slot.innerHTML = cellPanelHtml(cell);
+      writeHashState({ probe, model });
+      // On mobile (single-column layout) the panel lands below the
+      // matrix — scroll into view so the tap is obviously tracked.
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        slot.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+}
+
+function modelCardHtml(m, rec) {
+  const rate = rec.total ? rec.pass / rec.total : 0;
+  const rateClass = rate >= 0.7 ? "" : rate >= 0.4 ? "mid" : "low";
+  const tiersHtml = Object.keys(rec.byTier).map(Number).sort((a,b)=>a-b).map(t => {
+    const v = rec.byTier[t];
+    const p = v.filter(x=>x).length;
+    return `T${t}:${p}/${v.length}`;
+  }).join(" ");
+  return `<div class="model-card">
+    <div class="name">${esc(shortModel(m))}</div>
+    <div class="rate ${rateClass}">${rec.pass}/${rec.total} <span style="color:var(--dim); font-size:11px">(${Math.round(100*rate)}%)</span></div>
+    <div class="tier-row">
+      <span class="ceil">pass T${rec.passCeil}</span> ·
+      <span class="ceil">attempt T${rec.attemptCeil}</span> ·
+      <span class="ceil">top T${rec.topAny}</span>
+    </div>
+    <div class="tier-row">${tiersHtml}</div>
+  </div>`;
+}
+
+function matrixHtml(models, probeIds, byKey) {
+  // Sort rows by tier (stable), then probe id, using the registry
+  // if the probe is known; unknown probes get a sentinel big tier
+  // so they sort last with an explicit "?" marker instead of
+  // breaking the header alignment.
+  const sorted = probeIds.slice().sort((a, b) => {
+    const ta = PROBES_BY_ID[a]?.tier ?? 99;
+    const tb = PROBES_BY_ID[b]?.tier ?? 99;
+    return ta !== tb ? ta - tb : a.localeCompare(b);
+  });
+  const header = `<tr>
+    <th>probe</th>
+    <th>tier</th>
+    ${models.map(m => `<th class="model">${esc(shortModel(m))}</th>`).join("")}
+  </tr>`;
+  const rows = sorted.map(pid => {
+    const probe = PROBES_BY_ID[pid];
+    const tier = probe ? `T${probe.tier}` : "T?";
+    const cells = models.map(m => {
+      const c = byKey[`${pid}|${m}`];
+      if (!c) return `<td class="none">—</td>`;
+      const cls = c.passed ? "pass" : "fail";
+      const glyph = c.passed ? "✓" : "✗";
+      return `<td class="${cls}" data-probe="${esc(pid)}" data-model="${esc(m)}" title="${esc(c.fail_category || '')}">${glyph}</td>`;
+    }).join("");
+    return `<tr>
+      <th>${esc(pid)}</th>
+      <td class="tier">${tier}</td>
+      ${cells}
+    </tr>`;
+  }).join("");
+  return `<table class="matrix">${header}${rows}</table>`;
+}
+
+function cellPanelHtml(cell) {
+  const probe = PROBES_BY_ID[cell.probe_id];
+  const verdict = cell.passed
+    ? `<span class="chip ok">PASS</span>`
+    : `<span class="chip err">FAIL · ${esc(cell.fail_category || '?')}</span>`;
+  const crits = (cell.criteria || []).map(c => `
+    <div class="crit ${c.passed ? 'pass':'fail'}">
+      <span class="chip ${c.passed?'ok':'err'}">${esc(c.kind)}</span>
+      ${esc(c.reason || '')}
+    </div>
+  `).join("");
+  const toolUses = (cell.trace?.tool_uses || []).map((tu, i) => `
+    <div class="crit ${tu.result_is_error ? 'fail':'pass'}">
+      <span class="chip">${esc(tu.name)}</span>
+      ${tu.result_is_error ? '<span class="chip err">err</span>' : ''}
+      <span style="color:var(--dim)">[${i}]</span>
+      <pre>${esc(JSON.stringify(tu.input, null, 2))}</pre>
+      ${tu.result_preview ? `<details><summary>result preview</summary><pre>${esc(tu.result_preview)}</pre></details>` : ''}
+    </div>
+  `).join("");
+  const runner = (cell.runner_errors || []).map(e =>
+    `<div class="crit fail"><span class="chip err">runner</span>${esc(e)}</div>`).join("");
+  return `
+    <div class="cell-panel">
+      <div class="hdr">
+        <span class="title">${esc(cell.probe_id)}</span>
+        ${probe ? `<span class="chip">T${probe.tier}</span>` : ''}
+        <span class="chip">${esc(shortModel(cell.model_ref))}</span>
+        ${verdict}
+        <span style="color:var(--dim); font-size:10.5px; margin-left:auto">
+          ${cell.latency_ms}ms · in:${cell.tokens_in} out:${cell.tokens_out} · ${cell.trace?.turn_count||0} turn(s)
+        </span>
+      </div>
+      ${probe ? `<details><summary>prompt</summary><pre>${esc(probe.prompt)}</pre></details>` : ''}
+      <h3 style="margin:8px 0 4px 0; font-size:11px">criteria</h3>
+      ${crits || '<div style="color:var(--dim); font-size:11px">none</div>'}
+      ${runner ? `<h3 style="margin:8px 0 4px 0; font-size:11px">runner</h3>${runner}` : ''}
+      ${toolUses ? `<h3 style="margin:8px 0 4px 0; font-size:11px">tool_uses</h3>${toolUses}` : ''}
+      ${cell.trace?.final_text ? `<h3 style="margin:8px 0 4px 0; font-size:11px">final text</h3><pre>${esc(cell.trace.final_text.slice(0, 1500))}</pre>` : ''}
+    </div>
+  `;
+}
+
+loadRuns();
+</script>
+</body>
+</html>

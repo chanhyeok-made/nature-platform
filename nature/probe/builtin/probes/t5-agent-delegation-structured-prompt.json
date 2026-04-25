@@ -1,0 +1,28 @@
+{
+  "id": "t5-agent-delegation-structured-prompt",
+  "title": "Emit Agent delegation with multi-line structured prompt",
+  "tier": 5,
+  "dimensions": [
+    "tool.emit",
+    "delegation.format"
+  ],
+  "allowed_tools": [
+    "Agent"
+  ],
+  "prompt": "Delegate to sub-agent `implementer`. The prompt must:\n  1. Include the phrase `apply the following patch`.\n  2. Mention the file path `src/main.py`.\n  3. Contain the word `exactly`.\nUse the Agent tool.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Agent",
+      "input_contains": {
+        "name": "implementer"
+      },
+      "input_regex": {
+        "prompt": "(?i)apply the following patch"
+      }
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

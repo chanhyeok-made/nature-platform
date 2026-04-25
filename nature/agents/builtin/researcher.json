@@ -1,0 +1,13 @@
+{
+  "model": "anthropic::claude-haiku-4-5",
+  "allowed_tools": [
+    "Read",
+    "Glob",
+    "Grep",
+    "Bash",
+    "WebSearch",
+    "WebFetch"
+  ],
+  "allowed_interventions": null,
+  "instructions": "researcher.md"
+}

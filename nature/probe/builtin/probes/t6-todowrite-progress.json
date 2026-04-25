@@ -1,0 +1,37 @@
+{
+  "id": "t6-todowrite-progress",
+  "title": "Multi-turn TodoWrite progress updates",
+  "tier": 6,
+  "dimensions": [
+    "multi_turn_state",
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "TodoWrite"
+  ],
+  "prompt": "Emit TWO TodoWrite calls:\n1. First call: 2 todos — 'step A' pending, 'step B' pending.\n2. Second call: update the same 2 todos — 'step A' now completed, 'step B' now in_progress.\nBoth calls must be real tool_use blocks. Final answer: `progressed`.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "TodoWrite",
+      "input_regex": {
+        "todos": "(?is)step A.*pending.*step B.*pending"
+      }
+    },
+    {
+      "kind": "tool_use",
+      "at_index": 1,
+      "name": "TodoWrite",
+      "input_regex": {
+        "todos": "(?is)completed.*in_progress"
+      }
+    },
+    {
+      "kind": "final_text",
+      "contains": "progressed"
+    }
+  ],
+  "max_turns": 4,
+  "timeout_sec": 90
+}

@@ -1,0 +1,34 @@
+{
+  "id": "x1-pluggy-remove-plugin",
+  "title": "pluggy: _remove_plugin should remove every hookimpl for a plugin",
+  "category": "bug-fix",
+  "tags": [
+    "external",
+    "pluggy",
+    "plugin-manager"
+  ],
+  "size": "medium",
+  "prompt": "외부 라이브러리 `pluggy` 의 PR #646 / issue #431 에 해당하는 버그를 고쳐야 합니다.\n\n## 버그 서술\n\n한 플러그인이 같은 훅에 여러 hookimpl 을 등록했을 때 (예: `specname=` 을 써서 두 개 이상), `PluginManager._remove_plugin()` 이 **첫 매칭 하나만** 제거하고 나머지는 남겨둡니다. 동시에 `PluginManager.get_hookcallers()` 는 같은 HookCaller 엔트리를 **중복으로** 반환합니다 (첫 번째 버그를 가려주는 부작용).\n\n## 요구사항\n\n1. `_remove_plugin()` 이 해당 플러그인의 **모든** hookimpl 을 한 번에 제거하도록 수정.\n2. `get_hookcallers()` 가 각 HookCaller 를 **최대 한 번만** 반환하도록 중복 제거.\n\n두 함수의 구현은 `src/pluggy/_hooks.py`, `src/pluggy/_manager.py` 에 있습니다. 테스트 동작을 가장 적은 수정으로 만족시키세요.\n\n## 수용 테스트\n\n작업 공간에 이미 주입되어 있는 두 테스트가 통과해야 합니다:\n\n- `testing/test_pluginmanager.py::test_unregister_plugin_with_multi_hookimpls`\n- `testing/test_pluginmanager.py::test_get_hookcallers_no_duplicates`\n\n## 제약\n\n- 기존 `testing/` 아래 모든 테스트가 계속 통과해야 합니다.\n- public API (PluginManager 의 기존 메서드 시그니처) 변경 금지.\n- pluggy 저장소 안에서만 작업 — nature 저장소로 import 되는 경로 아님.",
+  "target": {
+    "repo": "https://github.com/pytest-dev/pluggy.git",
+    "ref": "20d8143^"
+  },
+  "setup": {
+    "type": "git_clone_at_ref",
+    "apply_commit": "20d8143",
+    "diff_scope": [
+      "testing/test_pluginmanager.py"
+    ]
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": [
+      "testing/test_pluginmanager.py::test_unregister_plugin_with_multi_hookimpls",
+      "testing/test_pluginmanager.py::test_get_hookcallers_no_duplicates"
+    ],
+    "timeout_sec": 420,
+    "pythonpath": [
+      "src"
+    ]
+  }
+}

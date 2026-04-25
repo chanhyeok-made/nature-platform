@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nature"
+version = "0.3.0"
+description = "LLM agent orchestration framework — transparent, customizable, extensible"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [
+    { name = "chanhyeok" },
+]
+dependencies = [
+    "pydantic>=2.0,<3.0",
+    "click>=8.0,<9.0",
+    "textual>=1.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.4",
+]
+anthropic = [
+    "anthropic>=0.40",
+]
+dashboard = [
+    "websockets>=13.0",
+]
+openai = [
+    "openai>=1.50",
+]
+
+[project.scripts]
+nature = "nature.cli:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["nature"]

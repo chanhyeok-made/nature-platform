@@ -1,0 +1,67 @@
+diff --git a/notify.py b/notify.py
+new file mode 100644
+index 0000000..3c4d5e6
+--- /dev/null
++++ b/notify.py
+@@ -0,0 +1,28 @@
++"""Callback-style notifier.
++Rewrite `send_async` and `send_all` to async/await — see task prompt."""
++
++from __future__ import annotations
++
++from typing import Callable
++
++
++def send_async(subscriber: str, message: str,
++               callback: Callable[[str, dict], None]) -> None:
++    """Pretend to send an async notification. Invokes
++    `callback(subscriber, result)` synchronously for the exercise."""
++    result = {"to": subscriber, "body": message, "ok": True}
++    callback(subscriber, result)
++
++
++def send_all(subscribers: list[str], message: str,
++             on_done: Callable[[list[dict]], None]) -> None:
++    """Fan out to every subscriber; calls `on_done(collected)` when done."""
++    collected: list[dict] = []
++
++    def _cb(sub: str, res: dict) -> None:
++        collected.append(res)
++        if len(collected) == len(subscribers):
++            on_done(collected)
++
++    for sub in subscribers:
++        send_async(sub, message, _cb)
+diff --git a/tests/test_notify.py b/tests/test_notify.py
+new file mode 100644
+index 0000000..4d5e6f7
+--- /dev/null
++++ b/tests/test_notify.py
+@@ -0,0 +1,27 @@
++import asyncio
++import inspect
++import sys
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++from notify import send_all, send_async  # noqa: E402
++
++
++def test_send_async_is_coroutine_function():
++    assert inspect.iscoroutinefunction(send_async)
++
++
++def test_send_all_is_coroutine_function():
++    assert inspect.iscoroutinefunction(send_all)
++
++
++def test_callback_params_removed_from_signatures():
++    sig_async = inspect.signature(send_async)
++    sig_all = inspect.signature(send_all)
++    assert "callback" not in sig_async.parameters
++    assert "on_done" not in sig_all.parameters
++
++
++def test_send_all_returns_ordered_result_list():
++    results = asyncio.run(send_all(["a", "b", "c"], "hello"))
++    assert [r["to"] for r in results] == ["a", "b", "c"]
++    assert all(r["body"] == "hello" and r["ok"] for r in results)

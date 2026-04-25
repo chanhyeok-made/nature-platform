@@ -1,0 +1,41 @@
+{
+  "id": "t8-add-missing-import",
+  "title": "Add a missing import to a Python file",
+  "tier": 8,
+  "dimensions": [
+    "edit.discipline",
+    "tool.emit",
+    "multi_turn_state"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "calc.py",
+        "content": "def pi_times(x):\n    return math.pi * x\n"
+      }
+    ]
+  },
+  "prompt": "The file `{workspace}/calc.py` uses `math.pi` but does not import `math`. Fix it: add `import math` at the top of `{workspace}/calc.py`. Use Read then Edit. Keep the rest of the file unchanged. Final answer: just `fixed`.",
+  "success": [
+    {
+      "kind": "file_state",
+      "path": "calc.py",
+      "contains": "import math"
+    },
+    {
+      "kind": "file_state",
+      "path": "calc.py",
+      "contains": "math.pi * x"
+    },
+    {
+      "kind": "final_text",
+      "contains": "fixed"
+    }
+  ],
+  "max_turns": 5,
+  "timeout_sec": 150
+}

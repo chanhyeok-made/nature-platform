@@ -1,0 +1,14 @@
+{
+  "model": "anthropic::claude-sonnet-4-6",
+  "allowed_tools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "TodoWrite"
+  ],
+  "allowed_interventions": null,
+  "instructions": "implementer.md"
+}

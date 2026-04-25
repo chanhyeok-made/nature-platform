@@ -1,0 +1,38 @@
+{
+  "id": "t3-edit-exact-bytes",
+  "title": "Apply an Edit when given exact old/new bytes",
+  "tier": 3,
+  "dimensions": [
+    "tool.emit",
+    "edit.discipline"
+  ],
+  "allowed_tools": [
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "src/greet.py",
+        "content": "def greet(name):\n    return 'Hello, ' + name\n"
+      }
+    ]
+  },
+  "prompt": "Use the Edit tool on `{workspace}/src/greet.py` exactly once. Replace the exact string:\n\n```\nreturn 'Hello, ' + name\n```\n\nwith:\n\n```\nreturn f'Hello, {name}!'\n```\n\nDo not read the file first — the exact old_string is given above.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Edit"
+    },
+    {
+      "kind": "file_state",
+      "path": "src/greet.py",
+      "contains": "return f'Hello, {name}!'"
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 90
+}

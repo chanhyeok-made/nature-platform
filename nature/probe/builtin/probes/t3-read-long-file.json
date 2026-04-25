@@ -1,0 +1,33 @@
+{
+  "id": "t3-read-long-file",
+  "title": "Read a larger file and extract a specific section",
+  "tier": 3,
+  "dimensions": [
+    "tool.result.consume"
+  ],
+  "allowed_tools": [
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "big.txt",
+        "content": "filler line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nKEY=0xC0FFEE\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\nfiller line\n"
+      }
+    ]
+  },
+  "prompt": "Read `{workspace}/big.txt`. The file contains a single line like `KEY=...`. Return ONLY the value after the `=` on the final line of your reply.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Read"
+    },
+    {
+      "kind": "final_text",
+      "contains": "0xC0FFEE"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 120
+}

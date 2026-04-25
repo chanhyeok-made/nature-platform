@@ -1,0 +1,46 @@
+diff --git a/mycsv.py b/mycsv.py
+new file mode 100644
+index 0000000..6eb030e
+--- /dev/null
++++ b/mycsv.py
+@@ -0,0 +1,14 @@
++"""Tiny CSV parser — three edge-case bugs. Fix `parse_row` so tests pass."""
++
++from __future__ import annotations
++
++
++def parse_row(line: str) -> list[str]:
++    fields = []
++    for chunk in line.split(","):
++        if chunk.startswith('"') and chunk.endswith('"'):
++            chunk = chunk[1:-1]
++        fields.append(chunk)
++    if fields and fields[-1] == "":
++        fields.pop()
++    return fields
+diff --git a/tests/test_mycsv.py b/tests/test_mycsv.py
+new file mode 100644
+index 0000000..6c67d95
+--- /dev/null
++++ b/tests/test_mycsv.py
+@@ -0,0 +1,20 @@
++import sys
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++from mycsv import parse_row  # noqa: E402
++
++
++def test_unquoted_commas_split_normally():
++    assert parse_row("a,b,c") == ["a", "b", "c"]
++
++
++def test_quoted_comma_is_preserved():
++    assert parse_row('"hello, world",foo') == ["hello, world", "foo"]
++
++
++def test_escaped_double_quote_becomes_literal():
++    assert parse_row('"he said ""hi"", then left"') == ['he said "hi", then left']
++
++
++def test_trailing_empty_field_is_preserved():
++    assert parse_row("a,b,") == ["a", "b", ""]

@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nature eval</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0e0f10;
+      --fg: #e8e8e6;
+      --dim: #9c9c99;
+      --row: #1a1a1c;
+      --row-hover: #222225;
+      --accent: #6aa8ff;
+      --pass: #3ec97d;
+      --fail: #ef5b5b;
+      --err: #c67a2a;
+    }
+    html {
+      /* Prevent iOS Safari from auto-enlarging text when it finds a
+         run of long un-wrapped content (URLs, JSON, file paths). */
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      /* Safety net so long unbreakable tokens inside a pre or chip
+         can never expand the viewport and push sibling content off-
+         screen. Individual containers (frame-graph, api-payload pre)
+         still opt into their own overflow. */
+      overflow-x: hidden;
+    }
+    /* Global defaults so every <pre> wraps. Individual .lane pre /
+       .api-payload-raw / .edit-diff pre rules used to carry these
+       per-selector and any <pre> rendered in a new section (e.g.
+       payload-item, full-msg-body) silently inherited the
+       un-wrapped default. One rule so nothing leaks. */
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+    }
+    /* Inline code (model names, event ids, frame ids) frequently
+       contains long unbroken IDs that break narrow layouts. Let
+       them wrap instead of pushing the container. */
+    code {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    header {
+      padding: 10px 16px;
+      border-bottom: 1px solid #2a2a2c;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .t { font-weight: 600; }
+    header .link {
+      color: var(--dim);
+      text-decoration: none;
+    }
+    header .link:hover { color: var(--accent); }
+
+    main {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      height: calc(100vh - 41px);
+    }
+    #runs {
+      border-right: 1px solid #2a2a2c;
+      overflow-y: auto;
+    }
+    .run {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e1e20;
+      cursor: pointer;
+    }
+    .run:hover { background: var(--row-hover); }
+    .run.selected { background: var(--row); border-left: 3px solid var(--accent); padding-left: 11px; }
+    .run .id { font-weight: 600; }
+    .run .meta { color: var(--dim); font-size: 11px; margin-top: 4px; }
+    .run .counts { margin-top: 4px; }
+    .run .pass { color: var(--pass); }
+    .run .fail { color: var(--fail); }
+    .run .err { color: var(--err); }
+
+    #detail {
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+    #detail h2 {
+      font-size: 14px;
+      margin: 0 0 12px 0;
+    }
+    .meta-line {
+      color: var(--dim);
+      margin-bottom: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    th, td {
+      border: 1px solid #2a2a2c;
+      padding: 6px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--row);
+      font-weight: 500;
+    }
+    .cell-pass { color: var(--pass); }
+    .cell-fail { color: var(--fail); }
+    .cell-err { color: var(--err); }
+
+    .cell { cursor: pointer; }
+    .cell:hover { background: var(--row-hover); }
+    .cell.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .cell a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .cell a:hover { text-decoration: underline; }
+
+    .diff-block {
+      white-space: pre-wrap;
+      font-family: inherit;
+      font-size: 12px;
+      background: var(--row);
+      padding: 10px 12px;
+      border: 1px solid #2a2a2c;
+      border-radius: 4px;
+    }
+
+    /* Cell detail panel */
+    #cell-detail {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: var(--row);
+      border: 1px solid #2a2a2c;
+      border-radius: 6px;
+    }
+    #cell-detail h3 {
+      font-size: 13px;
+      margin: 14px 0 6px 0;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    #cell-detail h3:first-child { margin-top: 0; }
+    .cd-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .cd-header .verdict {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .cd-header .ref {
+      color: var(--dim);
+      font-size: 12px;
+    }
+    .cd-header .close {
+      margin-left: auto;
+      color: var(--dim);
+      background: none;
+      border: 1px solid #2a2a2c;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .metric-grid .mk {
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+    }
+    .metric-grid .mk .l {
+      color: var(--dim);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metric-grid .mk .v { font-weight: 600; margin-top: 2px; }
+
+    .cost-bar {
+      display: flex;
+      height: 18px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 4px;
+      background: var(--bg);
+    }
+    .cost-bar .seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 10px;
+      white-space: nowrap;
+      padding: 0 4px;
+      overflow: hidden;
+    }
+    .role-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 11px;
+      color: var(--dim);
+    }
+    .role-legend .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+
+    .edit-diff {
+      margin: 6px 0 10px 0;
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .edit-diff .head {
+      background: var(--bg);
+      padding: 5px 8px;
+      font-size: 11px;
+      color: var(--dim);
+      border-bottom: 1px solid #2a2a2c;
+    }
+    .edit-diff .head .file { color: var(--fg); font-weight: 600; }
+    .edit-diff pre {
+      margin: 0;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 11.5px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .diff-minus { color: var(--fail); }
+    .diff-plus { color: var(--pass); }
+
+    .timeline {
+      max-height: 360px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 3px;
+      padding: 4px 0;
+    }
+    .tl-row {
+      display: grid;
+      grid-template-columns: 40px 100px 120px 1fr;
+      gap: 8px;
+      padding: 2px 10px;
+      font-size: 11.5px;
+      border-bottom: 1px solid #1e1e20;
+    }
+    .tl-row:hover { background: var(--row); }
+    .tl-row .id { color: var(--dim); text-align: right; }
+    .tl-row .type { color: var(--dim); }
+    .tl-row.error-row { background: rgba(239, 91, 91, 0.08); }
+    .tl-row.hint-row { background: rgba(198, 122, 42, 0.06); }
+    .tl-row.frame-row { font-weight: 600; color: var(--accent); }
+
+    .muted { color: var(--dim); }
+
+    /* Frame tree + Turn cards */
+    .frame-tree { margin-top: 4px; }
+    details.frame {
+      margin: 6px 0;
+      border: 1px solid #2a2a2c;
+      border-radius: 4px;
+      background: var(--bg);
+    }
+    details.frame > summary {
+      cursor: pointer;
+      padding: 6px 10px;
+      font-weight: 600;
+      background: var(--row);
+      border-radius: 4px 4px 0 0;
+      list-style: none;
+    }
+    details.frame > summary::-webkit-details-marker { display: none; }
+    details.frame > summary::before {
+      content: "▸ ";
+      color: var(--dim);
+    }
+    details[open].frame > summary::before { content: "▾ "; }
+    details.frame .frame-badge {
+      font-weight: 400;
+      color: var(--dim);
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    details.frame.errored > summary { border-left: 3px solid var(--fail); padding-left: 7px; }
+    details.frame.active > summary  { border-left: 3px solid var(--accent); padding-left: 7px; }
+
+    .turns {
+      padding: 6px 8px 6px 20px;
+    }
+    .turn {
+      margin: 6px 0;
+      border: 1px solid #2a2a2c;
+      border-left: 3px solid #3b3b3e;
+      border-radius: 3px;
+      background: var(--bg);
+    }
+    .turn.retry-turn { border-left-color: var(--err); }
+    .turn-header {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 4px 10px;
+      background: var(--row);
+      font-size: 11.5px;
+      flex-wrap: wrap;
+    }
+    .turn-header .tnum { font-weight: 700; color: var(--accent); }
+    .turn-header .meta { color: var(--dim); }
+    .turn-header .stop { color: var(--fg); }
+    .turn-header .stop.stop-tool_use { color: #9cdcfe; }
+    .turn-header .stop.stop-end_turn { color: var(--pass); }
+    .turn-header .stop.stop-max_tokens { color: var(--err); }
+    .turn-header .cost { color: var(--pass); }
+    .turn-header .fail-badge {
+      background: var(--fail); color: #000; padding: 0 5px; border-radius: 2px;
+      font-size: 10px; font-weight: 700;
+    }
+    .turn-header .retry-badge {
+      background: var(--err); color: #000; padding: 0 5px; border-radius: 2px;
+      font-size: 10px; font-weight: 700;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 10px;
+      padding: 4px 10px;
+      border-top: 1px solid #1e1e20;
+      font-size: 11.5px;
+    }
+    .lane .label {
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding-top: 2px;
+    }
+    .lane-input  .label { color: #9cdcfe; }
+    .lane-pre    .label { color: #d0a6ff; }
+    .lane-call   .label { color: var(--pass); }
+    .lane-post   .label { color: #ffb96a; }
+    .mission-pane {
+      margin: 6px 10px;
+      padding: 6px 8px;
+      border: 1px solid #2a2a2c;
+      border-left: 2px solid #ffd86a;
+      background: rgba(255,216,106,0.04);
+      border-radius: 2px;
+    }
+    .mission-pane summary {
+      cursor: pointer;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 11px;
+    }
+    .mission-pane summary::-webkit-details-marker { color: var(--dim); }
+    .mission-pane .mission-head { color: var(--fg); flex: 1; }
+    .mission-pane pre {
+      margin: 6px 0 0 0;
+      padding: 6px 8px;
+      background: var(--row);
+      border: 1px solid #2a2a2c;
+      border-radius: 2px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 11px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .in-delta { margin-bottom: 8px; }
+    .in-full-wrap {
+      border-top: 1px dashed #2a2a2c;
+      padding-top: 6px;
+      margin-top: 4px;
+    }
+    .in-full-wrap .full-req-body { margin-top: 6px; }
+    .full-req-btn {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(106,168,255,0.35);
+      border-radius: 2px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .full-req-btn:hover { background: rgba(106,168,255,0.08); }
+    .full-req-btn:disabled { opacity: 0.5; cursor: default; }
+    .full-section {
+      border-top: 1px dashed #2a2a2c;
+      padding: 6px 0;
+      margin-top: 4px;
+    }
+    .full-section:first-child { border-top: none; margin-top: 0; }
+    .full-section-title {
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .full-msg {
+      border-left: 2px solid #2a2a2c;
+      padding: 4px 8px;
+      margin: 4px 0;
+      background: rgba(255,255,255,0.01);
+    }
+    .full-msg-head {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 10.5px;
+      margin-bottom: 3px;
+    }
+    .full-msg-body > div { margin: 2px 0; }
+    pre.api-payload-raw {
+      max-height: 520px;
+      font-size: 11px;
+      padding: 8px 10px;
+      border: 1px solid rgba(106,168,255,0.25);
+      background: rgba(106,168,255,0.03);
+    }
+    .payload-meta {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 2px 0;
+      font-size: 11px;
+    }
+    .payload-item {
+      margin: 6px 0;
+      padding: 6px 8px;
+      border-left: 2px solid #2a2a2c;
+      background: rgba(255,255,255,0.01);
+      border-radius: 2px;
+    }
+    .payload-item-head {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      font-size: 10.5px;
+      margin-bottom: 4px;
+    }
+    .section-header .payload-item { border-left-color: #ffb96a; }
+    .section-body   .payload-item { border-left-color: #9cdcfe; }
+    .section-footer .payload-item { border-left-color: #c49bff; }
+    .section-tools  .payload-item { border-left-color: #7fe0b0; }
+    .section-pipeline { border: 1px solid #2a2a2c; border-left: 2px solid #7fe0b0; }
+    .pipeline-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 4px 0;
+    }
+    .pipeline-column {
+      border: 1px dashed #2a2a2c;
+      border-radius: 2px;
+      padding: 6px 8px;
+    }
+    .pipeline-column-title {
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .pipeline-stage {
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      font-size: 11px;
+      padding: 2px 0;
+    }
+    .pipeline-arrow {
+      font-size: 11px;
+      text-align: center;
+      color: var(--dim);
+      margin: 1px 0;
+    }
+    .pipeline-notes {
+      margin-top: 6px;
+      border-top: 1px dashed #2a2a2c;
+      padding-top: 6px;
+      font-size: 10.5px;
+      line-height: 1.4;
+    }
+
+    /* Close button is mobile-only — hidden on desktop. */
+    .turn-pane-close { display: none; }
+    .turn-pane-backdrop { display: none; }
+    /* body.no-scroll is applied whenever the mobile sheet opens —
+       scoped inside the mobile media query so desktop isn't
+       affected even when the class is set (e.g. URL-hash restore
+       that's sheet-aware). */
+
+    /* ── Mobile responsiveness ───────────────────────────────── */
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: calc(100vh - 41px);
+      }
+      #runs {
+        border-right: none;
+        border-bottom: 1px solid #2a2a2c;
+        max-height: 32vh;
+      }
+      .graph-split {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .frame-graph { overflow-x: auto; }
+      .pipeline-split {
+        grid-template-columns: 1fr;
+      }
+      .metric-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      .lane {
+        grid-template-columns: 44px 1fr;
+        font-size: 11px;
+      }
+      .turn-pane .pane-header {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 6px 8px;
+        padding-right: 36px; /* room for close button */
+      }
+      .turn-pane .pane-header .meta { font-size: 10px; }
+      pre { max-height: 200px; font-size: 10.5px; }
+      pre.api-payload-raw { max-height: 300px; }
+      .payload-meta { font-size: 10.5px; }
+      table { font-size: 11px; }
+
+      /* ── Turn pane as bottom sheet ───────────────────────────
+         Hidden by default; slides up when `.active` is applied
+         (by `openMobileTurnPane()` on node-click). Dimmed
+         backdrop is a sibling of `.turn-pane` inside
+         `.graph-split` but position:fixed so the grid layout
+         doesn't matter.
+      */
+      .turn-pane {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        top: auto;
+        max-height: 88vh;
+        overflow-y: auto;
+        background: var(--bg);
+        border-top: 2px solid var(--accent);
+        box-shadow: 0 -8px 24px rgba(0,0,0,0.55);
+        transform: translateY(100%);
+        transition: transform 220ms ease;
+        z-index: 100;
+        border-radius: 12px 12px 0 0;
+      }
+      .turn-pane.active {
+        transform: translateY(0);
+      }
+      /* Show the placeholder "Click a turn…" hint on desktop only —
+         on mobile the sheet is hidden until a node is clicked, so the
+         placeholder would never be seen anyway. */
+      .turn-pane .placeholder { display: none; }
+      .turn-pane-close {
+        display: block;
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        background: transparent;
+        color: var(--fg);
+        border: 1px solid #2a2a2c;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        line-height: 1;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .turn-pane-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 99;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 220ms ease;
+      }
+      .turn-pane-backdrop.active {
+        display: block;
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.no-scroll { overflow: hidden; }
+
+      /* ── Horizontal overflow guard inside the sheet ───────────
+         The pane is position:fixed with left/right:0, so its width
+         is the viewport. But inside, any flex/grid child defaults
+         to min-width: auto — which equals its CONTENT's min-content
+         size. A single long token (file path, JSON chunk, URL)
+         inflates the row past the viewport, and since the sheet
+         has overflow-y:auto (not hidden-x), that overflow is
+         visible. Two fixes stacked:
+
+           1. Force every descendant to accept being narrowed —
+              `min-width: 0` on flex / grid items lets wrap rules
+              actually kick in.
+           2. Clip the sheet's own x-axis as a safety net.
+      */
+      .turn-pane { overflow-x: hidden; }
+      .turn-pane * { min-width: 0; }
+      .turn-pane span,
+      .turn-pane code,
+      .turn-pane div {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+    }
+    @media (max-width: 500px) {
+      header {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+      #runs { max-height: 28vh; }
+      .lane { grid-template-columns: 36px 1fr; gap: 6px; padding: 4px 6px; }
+      .mission-pane { margin: 4px 6px; padding: 4px 6px; }
+      .chip { font-size: 9.5px; padding: 1px 4px; }
+    }
+    .api-payload-notes {
+      font-size: 10.5px;
+      color: var(--dim);
+      background: rgba(255,216,106,0.04);
+      border-left: 2px solid #ffd86a;
+      padding: 4px 8px;
+      margin: 4px 0;
+    }
+    .api-payload-notes > div { line-height: 1.45; }
+    .lane.empty { color: var(--dim); }
+    .lane .body { display: flex; flex-direction: column; gap: 3px; }
+    .lane .body > div { line-height: 1.4; }
+    .lane pre {
+      margin: 2px 0;
+      padding: 4px 6px;
+      background: var(--row);
+      border: 1px solid #2a2a2c;
+      border-radius: 2px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 11px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .lane .chip {
+      display: inline-block;
+      background: var(--row);
+      border: 1px solid #2a2a2c;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10.5px;
+      color: var(--dim);
+      margin-right: 4px;
+    }
+    .lane .chip.hint { color: #d0a6ff; border-color: #3a2a4c; background: rgba(198, 122, 242, 0.08); }
+    .lane .chip.err  { color: var(--fail); border-color: rgba(239,91,91,0.4); background: rgba(239,91,91,0.1); }
+    .lane .chip.ok   { color: var(--pass); }
+    .lane .toolcall {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 6px;
+      padding: 2px 0;
+    }
+    .lane .toolcall .name { color: #ffb96a; font-weight: 600; }
+    .lane .toolcall.err .name { color: var(--fail); }
+
+    /* Split layout: vertical graph on left, turn detail on right */
+    .graph-split {
+      display: grid;
+      grid-template-columns: minmax(300px, auto) 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      min-height: 500px;
+    }
+    .frame-graph {
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 4px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 80vh;
+    }
+    .frame-graph svg { display: block; }
+    .frame-graph .col-label {
+      font-family: inherit;
+      font-size: 11px;
+      fill: var(--fg);
+      text-anchor: middle;
+      font-weight: 600;
+    }
+    .frame-graph .col-sublabel {
+      font-family: inherit;
+      font-size: 9.5px;
+      fill: var(--dim);
+      text-anchor: middle;
+    }
+    .frame-graph .col-line {
+      stroke: #3a3a3d;
+      stroke-width: 1.6;
+      fill: none;
+    }
+    .frame-graph .spawn-line {
+      stroke: #4a4a4e;
+      stroke-width: 1.6;
+      fill: none;
+    }
+    .frame-graph .node {
+      stroke: #1a1a1c;
+      stroke-width: 2;
+      cursor: pointer;
+      transition: filter 0.1s;
+    }
+    .frame-graph .node:hover { filter: brightness(1.4); }
+    .frame-graph .node.retry { stroke: var(--err); stroke-width: 2.5; }
+    .frame-graph .node.errored { stroke: var(--fail); stroke-width: 2.5; }
+    .frame-graph .node.selected {
+      stroke: var(--fg);
+      stroke-width: 3;
+      filter: drop-shadow(0 0 4px var(--accent));
+    }
+    .frame-graph .turn-index-label {
+      font-family: inherit;
+      font-size: 9px;
+      fill: var(--dim);
+      pointer-events: none;
+      dominant-baseline: middle;
+    }
+
+    /* Right-side turn detail pane */
+    .turn-pane {
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 4px;
+      padding: 12px 14px;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+    .turn-pane .placeholder {
+      color: var(--dim);
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 12px;
+    }
+    .turn-pane .pane-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a2c;
+      flex-wrap: wrap;
+    }
+    .turn-pane .pane-header .role-dot {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      vertical-align: -1px;
+    }
+    .turn-pane .pane-header .tnum {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 14px;
+    }
+    .turn-pane .pane-header .stop {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      background: var(--row);
+      color: var(--fg);
+    }
+    .turn-pane .pane-header .stop.stop-tool_use { color: #9cdcfe; }
+    .turn-pane .pane-header .stop.stop-end_turn { color: var(--pass); }
+    .turn-pane .pane-header .stop.stop-max_tokens { color: var(--err); }
+    .turn-pane .pane-header .cost { color: var(--pass); font-weight: 600; }
+    .turn-pane .pane-header .meta { color: var(--dim); font-size: 11px; }
+
+    .raw-events summary {
+      cursor: pointer;
+      color: var(--dim);
+      font-size: 11px;
+      padding: 4px 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .controls select, .controls button {
+      background: var(--row);
+      color: var(--fg);
+      border: 1px solid #2a2a2c;
+      padding: 4px 10px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .controls button:hover { border-color: var(--accent); }
+
+    .empty {
+      color: var(--dim);
+      padding: 40px 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="t">nature · eval</span>
+    <a class="link" href="/">sessions</a>
+    <span style="flex:1"></span>
+    <span id="count" class="meta-line"></span>
+  </header>
+
+  <main>
+    <aside id="runs"></aside>
+    <section id="detail">
+      <div class="empty">Select a run from the left to inspect it.</div>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let RUNS = [];
+let SELECTED = null;
+let DIFF_A = null;
+let DIFF_B = null;
+
+// ──────────────────────────────────────────────────────────────
+// URL state (shareable links)
+//   #run=<run_id>
+//   #run=...&cell=<task_id>/<preset>
+//   #run=...&cell=...&turn=<frame_id>:<turn_index>
+// Pasting a URL with these fragments lands directly on the matching
+// run/cell/turn. Each click that changes state rewrites the hash.
+// ──────────────────────────────────────────────────────────────
+let INTERNAL_HASH_WRITE = false;
+// While applyHashState() walks the UI (selectRun → loadCellDetail →
+// graph-node click), the side-effect handlers would otherwise stomp
+// the URL with partial state (e.g. selectRun writes `runId only`,
+// clobbering cell/turn). Suppress writes during apply so the full
+// incoming hash survives the restore.
+let APPLYING_HASH = false;
+
+function parseHashState() {
+  const h = (location.hash || "").replace(/^#/, "");
+  const params = new URLSearchParams(h);
+  const turnRaw = params.get("turn") || "";
+  const [fid, idx] = turnRaw.split(":");
+  const cellRaw = params.get("cell") || "";
+  const [task, preset] = cellRaw.split("/");
+  return {
+    runId: params.get("run") || null,
+    task: task || null,
+    preset: preset || null,
+    frameId: fid || null,
+    turnIdx: idx != null && idx !== "" ? idx : null,
+  };
+}
+
+function writeHashState(patch) {
+  if (APPLYING_HASH) return;
+  const cur = parseHashState();
+  const next = Object.assign({}, cur, patch || {});
+  const params = new URLSearchParams();
+  if (next.runId) params.set("run", next.runId);
+  if (next.task && next.preset) params.set("cell", `${next.task}/${next.preset}`);
+  if (next.frameId && next.turnIdx != null) params.set("turn", `${next.frameId}:${next.turnIdx}`);
+  INTERNAL_HASH_WRITE = true;
+  const newHash = params.toString();
+  if (newHash !== location.hash.replace(/^#/, "")) {
+    location.hash = newHash;
+  }
+  // Reset in next tick so an external paste (pre-existing hash) also
+  // gets processed when it arrives.
+  setTimeout(() => { INTERNAL_HASH_WRITE = false; }, 0);
+}
+
+async function applyHashState() {
+  const s = parseHashState();
+  if (!s.runId) return;
+  APPLYING_HASH = true;
+  try {
+    if (SELECTED !== s.runId) {
+      await selectRun(s.runId);
+    }
+    if (!s.task || !s.preset) return;
+    // Reflect selected cell in matrix UI even though writeHashState
+    // is suppressed.
+    const cellEl = document.querySelector(
+      `#detail .cell[data-task="${s.task}"][data-preset="${s.preset}"]`
+    );
+    if (cellEl) {
+      document.querySelectorAll("#detail .cell.selected").forEach(n => n.classList.remove("selected"));
+      cellEl.classList.add("selected");
+    }
+    await loadCellDetail(s.runId, s.task, s.preset);
+    if (!s.frameId || s.turnIdx == null) return;
+    // Graph is mounted inside the detail panel; let layout settle
+    // before hunting the node.
+    await new Promise(r => setTimeout(r, 60));
+    const node = document.querySelector(
+      `#cell-detail .frame-graph circle.node[data-frame="${s.frameId}"][data-turn="${s.turnIdx}"]`
+    );
+    if (node) node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  } finally {
+    APPLYING_HASH = false;
+  }
+}
+
+window.addEventListener("hashchange", () => {
+  if (INTERNAL_HASH_WRITE) return;
+  applyHashState();
+});
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function fmtTimestamp(epoch) {
+  if (!epoch) return "—";
+  const d = new Date(epoch * 1000);
+  return d.toLocaleString();
+}
+
+function fmtCost(v) { return v == null ? "—" : "$" + Number(v).toFixed(4); }
+function fmtSec(v) { return v == null ? "—" : Math.round(Number(v)) + "s"; }
+function fmtInt(v) { return v == null ? "—" : String(v); }
+
+function cellClass(cell) {
+  if (!cell) return "";
+  if (cell.error) return "cell-err";
+  return cell.passed ? "cell-pass" : "cell-fail";
+}
+
+function cellLabel(cell) {
+  if (!cell) return "—";
+  if (cell.error) return "ERR";
+  return cell.passed ? "PASS" : "FAIL";
+}
+
+async function loadRuns() {
+  const r = await fetch("/api/eval/runs");
+  const body = await r.json();
+  RUNS = body.runs || [];
+  renderRunList();
+  $("count").textContent = RUNS.length + " runs";
+  // If the URL already points at a run/cell/turn, navigate there.
+  await applyHashState();
+}
+
+function renderRunList() {
+  const target = $("runs");
+  if (!RUNS.length) {
+    target.innerHTML = '<div class="empty">No runs yet. Try <code>nature eval run</code>.</div>';
+    return;
+  }
+  target.innerHTML = RUNS.map(r => {
+    const selected = r.run_id === SELECTED ? " selected" : "";
+    return `
+      <div class="run${selected}" data-run="${esc(r.run_id)}">
+        <div class="id">${esc(r.run_id)}</div>
+        <div class="meta">${fmtTimestamp(r.started_at)}</div>
+        <div class="counts">
+          <span class="pass">${r.pass_count}/${r.cell_count} pass</span>
+          ${r.error_count ? `<span class="err"> · ${r.error_count} err</span>` : ""}
+          · ${r.task_ids.length}t × ${r.preset_names.length}p
+        </div>
+      </div>`;
+  }).join("");
+  target.querySelectorAll(".run").forEach(el => {
+    el.addEventListener("click", () => selectRun(el.dataset.run));
+  });
+}
+
+async function selectRun(runId) {
+  SELECTED = runId;
+  renderRunList();
+  writeHashState({ runId, task: null, preset: null, frameId: null, turnIdx: null });
+  const r = await fetch(`/api/eval/runs/${encodeURIComponent(runId)}`);
+  if (!r.ok) {
+    $("detail").innerHTML = `<div class="empty">load failed (${r.status})</div>`;
+    return;
+  }
+  const run = await r.json();
+  renderRun(run);
+}
+
+function renderRun(run) {
+  const presets = run.preset_names && run.preset_names.length ? run.preset_names : [...new Set(run.cells.map(c => c.preset))];
+  const tasks = run.task_ids && run.task_ids.length ? run.task_ids : [...new Set(run.cells.map(c => c.task_id))];
+  const pivot = {};
+  for (const c of run.cells) {
+    (pivot[c.task_id] ||= {})[c.preset] = c;
+  }
+
+  const wall = (run.finished_at && run.started_at) ? `${(run.finished_at - run.started_at).toFixed(1)}s` : "—";
+  const summaryRows = presets.map(p => {
+    const cells = run.cells.filter(c => c.preset === p);
+    const pass = cells.filter(c => c.passed).length;
+    const errs = cells.filter(c => c.error).length;
+    const cost = cells.reduce((a, c) => a + (c.cost_usd ?? 0), 0);
+    const lat = cells.reduce((a, c) => a + (c.latency_sec ?? 0), 0);
+    const turns = cells.reduce((a, c) => a + (c.turn_count ?? 0), 0);
+    const tools = cells.reduce((a, c) => a + (c.tool_call_count ?? 0), 0);
+    const rate = cells.length ? (pass / cells.length * 100).toFixed(0) : "0";
+    const avgLat = cells.length ? (lat / cells.length).toFixed(1) : "0";
+    return `<tr>
+      <td>${esc(p)}</td>
+      <td>${pass}/${cells.length} (${rate}%)</td>
+      <td>${fmtCost(cost)}</td>
+      <td>${avgLat}s</td>
+      <td>${turns}</td>
+      <td>${tools}</td>
+      <td class="${errs ? 'cell-err' : ''}">${errs}</td>
+    </tr>`;
+  }).join("");
+
+  const matrixRows = tasks.map(t => {
+    const cells = presets.map(p => {
+      const cell = (pivot[t] || {})[p];
+      if (!cell) return `<td>—</td>`;
+      const cls = cellClass(cell);
+      const lab = cellLabel(cell);
+      return `<td class="cell ${cls}"
+               data-task="${esc(t)}" data-preset="${esc(p)}"
+               title="click to inspect">
+        <strong>${lab}</strong><br>
+        ${fmtCost(cell.cost_usd)} · ${fmtSec(cell.latency_sec)} · ${fmtInt(cell.turn_count)}t
+      </td>`;
+    }).join("");
+    return `<tr><td><code>${esc(t)}</code></td>${cells}</tr>`;
+  }).join("");
+
+  const runOptions = RUNS
+    .filter(r => r.run_id !== run.run_id)
+    .map(r => `<option value="${esc(r.run_id)}">${esc(r.run_id)}</option>`)
+    .join("");
+
+  $("detail").innerHTML = `
+    <h2>${esc(run.run_id)}</h2>
+    <div class="meta-line">
+      ${fmtTimestamp(run.started_at)} · wall ${wall}
+      ${run.repo_git_sha ? ` · sha <code>${esc(run.repo_git_sha).slice(0, 12)}</code>` : ""}
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>task</th>${presets.map(p => `<th>${esc(p)}</th>`).join("")}
+      </tr></thead>
+      <tbody>${matrixRows}</tbody>
+    </table>
+
+    <h2>Summary by preset</h2>
+    <table>
+      <thead><tr>
+        <th>preset</th><th>pass</th><th>Σ cost</th><th>avg latency</th>
+        <th>Σ turns</th><th>Σ tool calls</th><th>errors</th>
+      </tr></thead>
+      <tbody>${summaryRows}</tbody>
+    </table>
+
+    <div id="cell-detail-slot"></div>
+
+    <h2>Diff against…</h2>
+    <div class="controls">
+      <select id="diff-other">${runOptions || "<option>(no other runs)</option>"}</select>
+      <button onclick="loadDiff('${esc(run.run_id)}')" ${runOptions ? "" : "disabled"}>diff</button>
+    </div>
+    <div id="diff-out"></div>
+  `;
+
+  // Wire cell clicks AFTER the matrix is in the DOM.
+  document.querySelectorAll("#detail .cell[data-task]").forEach(el => {
+    el.addEventListener("click", () => {
+      document.querySelectorAll("#detail .cell.selected").forEach(n => n.classList.remove("selected"));
+      el.classList.add("selected");
+      writeHashState({
+        runId: run.run_id,
+        task: el.dataset.task, preset: el.dataset.preset,
+        frameId: null, turnIdx: null,
+      });
+      loadCellDetail(run.run_id, el.dataset.task, el.dataset.preset);
+    });
+  });
+  // Reflect the currently-selected cell from URL hash (if any) once
+  // the matrix is in the DOM.
+  const s = parseHashState();
+  if (s.task && s.preset) {
+    const cellEl = document.querySelector(
+      `#detail .cell[data-task="${s.task}"][data-preset="${s.preset}"]`
+    );
+    if (cellEl) cellEl.classList.add("selected");
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Cell detail panel
+// ──────────────────────────────────────────────────────────────
+
+const ROLE_PALETTE = {
+  receptionist: "#8bd1ff",
+  core:         "#ffb96a",
+  researcher:   "#7fe0b0",
+  analyzer:     "#e0c36a",
+  implementer:  "#e78bff",
+  reviewer:     "#6adcd6",
+  judge:        "#ff9a9a",
+  solo:         "#b6b6ff",
+};
+function roleColor(name) {
+  return ROLE_PALETTE[name] || "#9c9c99";
+}
+
+async function loadCellDetail(runId, taskId, preset) {
+  const slot = $("cell-detail-slot");
+  slot.innerHTML = `<div id="cell-detail"><div class="muted">loading ${esc(taskId)} × ${esc(preset)}…</div></div>`;
+  const url = `/api/eval/runs/${encodeURIComponent(runId)}/cells/${encodeURIComponent(taskId)}/${encodeURIComponent(preset)}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    slot.innerHTML = `<div id="cell-detail" class="muted">load failed (${r.status})</div>`;
+    return;
+  }
+  const body = await r.json();
+  renderCellDetail(body);
+}
+
+function renderCellDetail(body) {
+  const cell = body.cell || {};
+  const edits = body.edits || [];
+  const timeline = body.timeline || [];
+  const frames = body.frames || [];
+  const rootFrameId = body.root_frame_id;
+
+  const verdict = cell.error ? "ERR" : (cell.passed ? "PASS" : "FAIL");
+  const vclass = cellClass(cell);
+
+  // ── Basic metrics grid
+  const kv = (label, val) => `<div class="mk"><div class="l">${label}</div><div class="v">${val}</div></div>`;
+  const fmtRatio = (v) => v == null ? "—" : (Number(v) * 100).toFixed(1) + "%";
+  const fmtMs = (v) => v == null ? "—" : Math.round(Number(v)) + "ms";
+
+  const basicMetrics = `
+    <div class="metric-grid">
+      ${kv("cost", fmtCost(cell.cost_usd))}
+      ${kv("latency", fmtSec(cell.latency_sec))}
+      ${kv("turns", fmtInt(cell.turn_count))}
+      ${kv("tool calls", fmtInt(cell.tool_call_count))}
+      ${kv("tokens in", fmtInt(cell.tokens_in))}
+      ${kv("tokens out", fmtInt(cell.tokens_out))}
+      ${kv("cache hit", fmtRatio(cell.cache_hit_rate))}
+      ${kv("avg turn lat", fmtMs(cell.avg_turn_latency_ms))}
+    </div>
+  `;
+
+  const qualityMetrics = `
+    <div class="metric-grid">
+      ${kv("diff +", fmtInt(cell.diff_lines_added))}
+      ${kv("diff −", fmtInt(cell.diff_lines_removed))}
+      ${kv("files", fmtInt(cell.diff_files_touched))}
+      ${kv("regressions", fmtInt(cell.regression_count))}
+      ${kv("tool errors", fmtInt(cell.tool_error_count))}
+      ${kv("provider errs", fmtInt(cell.provider_errors))}
+      ${kv("body compacts", fmtInt(cell.body_compactions))}
+      ${kv("sub frames", fmtInt(cell.sub_frame_count))}
+      ${kv("ref files ∩", cell.ref_files_overlap == null ? "—" : fmtRatio(cell.ref_files_overlap))}
+      ${kv("ref line ratio", cell.ref_line_ratio == null ? "—" : Number(cell.ref_line_ratio).toFixed(3))}
+      ${kv("max depth", fmtInt(cell.max_delegation_depth))}
+      ${kv("agents used", (cell.agents_used || []).length ? cell.agents_used.join(", ") : "—")}
+    </div>
+  `;
+
+  // ── Cost by agent bar
+  const cba = cell.cost_by_agent || {};
+  const costTotal = Object.values(cba).reduce((a, v) => a + Number(v || 0), 0);
+  let costBar = "";
+  if (costTotal > 0) {
+    const roles = Object.keys(cba);
+    costBar = `
+      <div class="cost-bar">
+        ${roles.map(r => {
+          const pct = (cba[r] / costTotal) * 100;
+          return `<div class="seg" style="flex:${cba[r]}; background:${roleColor(r)};"
+                    title="${esc(r)}: ${fmtCost(cba[r])} (${pct.toFixed(0)}%)">${pct >= 10 ? esc(r) : ""}</div>`;
+        }).join("")}
+      </div>
+      <div class="role-legend">
+        ${roles.map(r => `<span><span class="dot" style="background:${roleColor(r)}"></span>${esc(r)} ${fmtCost(cba[r])}</span>`).join("")}
+      </div>
+    `;
+  }
+
+  // ── Edits
+  const editBlock = edits.length
+    ? edits.map((e, i) => renderEdit(e, i)).join("")
+    : `<div class="muted">(no Edit/Write calls)</div>`;
+
+  // ── Frame graph (left) + Turn detail pane (right)
+  const splitBlock = frames.length
+    ? `<div class="graph-split">
+         ${renderFrameGraph(frames, rootFrameId)}
+         <div class="turn-pane" id="turn-pane">
+           <div class="placeholder">Click a turn in the graph to inspect it.</div>
+         </div>
+         <div class="turn-pane-backdrop" id="turn-pane-backdrop"
+              onclick="closeMobileTurnPane()"></div>
+       </div>`
+    : `<div class="muted">(no frame data — event log missing or empty)</div>`;
+
+  // ── Raw timeline (debug fallback, collapsed)
+  const tlBlock = timeline.length
+    ? `<details class="raw-events">
+         <summary>Raw events (${timeline.length})</summary>
+         <div class="timeline">${timeline.map(renderTlRow).join("")}</div>
+       </details>`
+    : "";
+
+  // ── Errors (if any)
+  const errBlock = cell.error
+    ? `<h3>Runner error</h3><pre class="diff-block">${esc(cell.error)}</pre>`
+    : "";
+  const pytestBlock = cell.pytest_tail
+    ? `<h3>pytest tail</h3><pre class="diff-block">${esc(cell.pytest_tail)}</pre>`
+    : "";
+
+  const sid = cell.session_id;
+  const sessionLink = sid
+    ? ` <a class="ref" href="/#${encodeURIComponent(sid)}" target="_blank">open full session ↗</a>`
+    : "";
+
+  $("cell-detail-slot").innerHTML = `
+    <div id="cell-detail">
+      <div class="cd-header">
+        <span class="verdict ${vclass}">${verdict}</span>
+        <span class="ref"><code>${esc(cell.task_id)}</code> × <code>${esc(cell.preset)}</code></span>
+        ${sessionLink}
+        <button class="close" onclick="closeCellDetail()">✕</button>
+      </div>
+      <h3>Basic metrics</h3>
+      ${basicMetrics}
+      <h3>Quality metrics</h3>
+      ${qualityMetrics}
+      ${costBar ? `<h3>Cost by agent</h3>${costBar}` : ""}
+      ${errBlock}
+      ${pytestBlock}
+      <h3>Agent edits (${edits.length})</h3>
+      ${editBlock}
+      <h3>Frames (${frames.length})${rootFrameId ? ` — root ${esc(rootFrameId).slice(0, 12)}` : ""}</h3>
+      ${splitBlock}
+      ${tlBlock}
+    </div>
+  `;
+  wireFrameGraphClicks();
+  $("cell-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeCellDetail() {
+  $("cell-detail-slot").innerHTML = "";
+  document.querySelectorAll("#detail .cell.selected").forEach(n => n.classList.remove("selected"));
+}
+
+function renderEdit(e, i) {
+  const oldLines = (e.old || "").split("\n").map(l => `<span class="diff-minus">- ${esc(l)}</span>`).join("\n");
+  const newLines = (e.new || "").split("\n").map(l => `<span class="diff-plus">+ ${esc(l)}</span>`).join("\n");
+  const file = e.file_path ? e.file_path.split("/").slice(-3).join("/") : "(no path)";
+  return `
+    <div class="edit-diff">
+      <div class="head">[${i + 1}] <span class="role">${esc(e.role || "?")}</span>
+        ${esc(e.tool)} <span class="file">${esc(file)}</span></div>
+      <pre>${oldLines}${e.old && e.new ? "\n" : ""}${newLines}</pre>
+    </div>
+  `;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Frame tree + Turn card rendering
+// ──────────────────────────────────────────────────────────────
+
+function framesById(frames) {
+  const map = {};
+  for (const f of frames) map[f.frame_id] = f;
+  return map;
+}
+
+function dfsFrames(frames, rootId) {
+  const byId = framesById(frames);
+  const out = [];
+  const visit = (id) => {
+    const f = byId[id];
+    if (!f) return;
+    out.push(f);
+    for (const cid of f.children_ids || []) visit(cid);
+  };
+  if (rootId) visit(rootId);
+  // Add any orphans we missed.
+  for (const f of frames) if (!out.includes(f)) out.push(f);
+  return out;
+}
+
+// ──────────────────────────────────────────────────────────────
+// SVG Frame Graph — vertical time axis (top → bottom),
+// each frame is its own column. Click a node → detail right pane.
+// ──────────────────────────────────────────────────────────────
+
+// Module-global so graph click handlers can find the selected turn.
+let CELL_FRAMES_BY_ID = {};
+let CELL_ROOT_FRAME_ID = null;
+
+function renderFrameGraph(frames, rootId) {
+  const byId = framesById(frames);
+  CELL_FRAMES_BY_ID = byId;
+  CELL_ROOT_FRAME_ID = rootId;
+  const ordered = dfsFrames(frames, rootId);
+
+  // 1. Assign column to each frame (DFS preorder = left→right order).
+  const colOf = {};
+  ordered.forEach((f, i) => { colOf[f.frame_id] = i; });
+
+  // 2. Collect turn anchors + event-id range.
+  const anchors = [];
+  let minId = Infinity, maxId = -Infinity;
+  for (const f of frames) {
+    for (const t of f.turns || []) {
+      const eid = t.call?.response_event_id
+        ?? (t.call?.attempts || []).slice(-1)[0]?.response_event_id
+        ?? null;
+      if (eid == null) continue;
+      anchors.push({ frame_id: f.frame_id, turn: t, event_id: eid });
+      if (eid < minId) minId = eid;
+      if (eid > maxId) maxId = eid;
+    }
+  }
+  if (!anchors.length) return "";
+
+  // 3. Layout constants.
+  const colW = 80;          // horizontal spacing between frame columns
+  const topPad = 48;        // room for column header (role + model)
+  const bottomPad = 16;
+  const leftPad = 40;       // room for left-side turn-id labels
+  const nodeR = 8;
+  const nColumns = ordered.length;
+  const svgW = leftPad + nColumns * colW + 20;
+
+  // Vertical positions: one row per unique event_id (sorted). This
+  // keeps turns that happened in the same "time" aligned, even
+  // across frames. Minimum row spacing so nothing overlaps.
+  const uniqIds = [...new Set(anchors.map(a => a.event_id))].sort((a, b) => a - b);
+  const rowYof = {};
+  const rowH = 30;
+  uniqIds.forEach((id, i) => { rowYof[id] = topPad + i * rowH; });
+  const svgH = topPad + uniqIds.length * rowH + bottomPad;
+
+  const colX = (fid) => leftPad + colOf[fid] * colW + colW / 2;
+
+  // Group anchors by frame, sorted chronologically.
+  const anchorsByFrame = {};
+  for (const a of anchors) (anchorsByFrame[a.frame_id] ||= []).push(a);
+  for (const fid in anchorsByFrame) {
+    anchorsByFrame[fid].sort((a, b) => a.event_id - b.event_id);
+  }
+
+  const parts = [];
+
+  // 4a. Column headers + vertical lines.
+  for (const f of ordered) {
+    const x = colX(f.frame_id);
+    const aList = anchorsByFrame[f.frame_id] || [];
+    parts.push(
+      `<text class="col-label" x="${x}" y="${18}">${esc(f.role)}</text>`
+    );
+    if (f.model) {
+      parts.push(
+        `<text class="col-sublabel" x="${x}" y="${32}">${esc(f.model.split("::").pop().slice(0, 18))}</text>`
+      );
+    }
+    if (aList.length) {
+      const y1 = rowYof[aList[0].event_id];
+      const y2 = rowYof[aList[aList.length - 1].event_id];
+      parts.push(`<path class="col-line" d="M${x} ${y1} L${x} ${y2}" />`);
+    }
+  }
+
+  // 4b. Turn-index labels at left margin (one per unique event row).
+  // Helpful when scrolling — indicates chronology.
+  for (const a of anchors) {
+    const y = rowYof[a.event_id];
+    const x = colX(a.frame_id);
+    const t = a.turn;
+    parts.push(`<text class="turn-index-label" x="${x + nodeR + 4}" y="${y}">T${t.turn_index}</text>`);
+  }
+
+  // 4c. Spawn + resolve curves.
+  for (const f of frames) {
+    if (!f.parent_id || !byId[f.parent_id]) continue;
+    const parent = byId[f.parent_id];
+    let parentTurn = null;
+    for (const t of parent.turns || []) {
+      for (const tu of t.post?.tool_uses || []) {
+        if (tu.spawned_frame_id === f.frame_id) { parentTurn = t; break; }
+      }
+      if (parentTurn) break;
+    }
+    const firstChild = (anchorsByFrame[f.frame_id] || [])[0];
+    if (!parentTurn || !firstChild) continue;
+
+    const parentEid = parentTurn.call?.response_event_id;
+    if (parentEid == null || rowYof[parentEid] == null) continue;
+
+    const px = colX(f.parent_id);
+    const py = rowYof[parentEid];
+    const cx = colX(f.frame_id);
+    const cy = rowYof[firstChild.event_id];
+
+    // Spawn curve (vertical Bézier): parent_turn → child_first_turn
+    const midY = (py + cy) / 2;
+    parts.push(`<path class="spawn-line" d="M${px} ${py} C ${px} ${midY}, ${cx} ${midY}, ${cx} ${cy}" />`);
+
+    // Resolve: child's last turn → parent's next turn
+    const parentTurns = parent.turns || [];
+    const nextParentTurn = parentTurns[parentTurns.indexOf(parentTurn) + 1];
+    const lastChild = anchorsByFrame[f.frame_id].slice(-1)[0];
+    if (nextParentTurn && lastChild) {
+      const nextEid = nextParentTurn.call?.response_event_id;
+      if (nextEid != null && rowYof[nextEid] != null) {
+        const rx = cx;
+        const ry = rowYof[lastChild.event_id];
+        const nx = px;
+        const ny = rowYof[nextEid];
+        const midY2 = (ry + ny) / 2;
+        parts.push(`<path class="spawn-line" d="M${rx} ${ry} C ${rx} ${midY2}, ${nx} ${midY2}, ${nx} ${ny}" />`);
+      }
+    }
+  }
+
+  // 4d. Nodes.
+  for (const f of ordered) {
+    const color = roleColor(f.role);
+    for (const a of anchorsByFrame[f.frame_id] || []) {
+      const x = colX(f.frame_id);
+      const y = rowYof[a.event_id];
+      const t = a.turn;
+      const attempts = t.call?.attempts || [];
+      const hasRetry = attempts.filter(at => !at.ok).length > 0;
+      const failedCall = attempts.length > 0 && !attempts[attempts.length - 1].ok;
+      const cls = ["node"];
+      if (failedCall) cls.push("errored");
+      else if (hasRetry) cls.push("retry");
+      const titleStop = attempts.slice(-1)[0]?.stop_reason || "?";
+      const tipLines = [
+        `${f.role} · T#${t.turn_index}`,
+        `stop=${titleStop}`,
+        `$${(t.call?.cost_usd || 0).toFixed(4)} · ${t.call?.latency_ms || 0}ms`,
+      ];
+      parts.push(`<circle
+        class="${cls.join(' ')}"
+        data-frame="${esc(f.frame_id)}"
+        data-turn="${t.turn_index}"
+        cx="${x}" cy="${y}" r="${nodeR}"
+        fill="${color}"><title>${esc(tipLines.join("\n"))}</title></circle>`);
+    }
+  }
+
+  const svg = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
+    ${parts.join("\n")}
+  </svg>`;
+  return `<div class="frame-graph">${svg}</div>`;
+}
+
+// Wire up click on a graph node → render turn detail in right pane.
+function wireFrameGraphClicks() {
+  document.querySelectorAll("#cell-detail .frame-graph circle.node").forEach(node => {
+    node.addEventListener("click", () => {
+      const fid = node.getAttribute("data-frame");
+      const tidx = Number(node.getAttribute("data-turn"));
+      document.querySelectorAll("#cell-detail .frame-graph .node.selected").forEach(el => el.classList.remove("selected"));
+      node.classList.add("selected");
+      const frame = CELL_FRAMES_BY_ID[fid];
+      const turn = frame?.turns?.find(t => t.turn_index === tidx);
+      if (!frame || !turn) return;
+      renderTurnPane(turn, frame);
+      writeHashState({ frameId: fid, turnIdx: String(tidx) });
+      openMobileTurnPane();
+    });
+  });
+}
+
+// On narrow screens the turn-pane slides up from the bottom as a
+// sheet instead of occupying the right column. Desktop is unaffected
+// because the `.active` / backdrop CSS is scoped inside
+// `@media (max-width: 900px)`.
+function openMobileTurnPane() {
+  const pane = document.getElementById("turn-pane");
+  const bd = document.getElementById("turn-pane-backdrop");
+  pane?.classList.add("active");
+  bd?.classList.add("active");
+  // Lock body scroll so the sheet feels like a modal.
+  document.body.classList.add("no-scroll");
+}
+
+function closeMobileTurnPane() {
+  const pane = document.getElementById("turn-pane");
+  const bd = document.getElementById("turn-pane-backdrop");
+  pane?.classList.remove("active");
+  bd?.classList.remove("active");
+  document.body.classList.remove("no-scroll");
+  // Drop the turn fragment from the URL so reshare links don't
+  // re-open the sheet on load. Keep run + cell.
+  const s = parseHashState();
+  if (s.frameId || s.turnIdx != null) {
+    writeHashState({ frameId: null, turnIdx: null });
+  }
+}
+
+function renderTurnPane(turn, frame) {
+  const pane = document.getElementById("turn-pane");
+  if (!pane) return;
+  const call = turn.call || {};
+  const attempts = call.attempts || [];
+  const lastAttempt = attempts[attempts.length - 1];
+  const retryCount = attempts.filter(a => !a.ok).length;
+  const finalOk = lastAttempt?.ok;
+  const stop = lastAttempt?.stop_reason || "?";
+  const stopHtml = finalOk
+    ? `<span class="stop stop-${esc(stop)}">${esc(stop)}</span>`
+    : `<span class="stop" style="color:var(--fail)">call failed</span>`;
+
+  const usage = call.usage || {};
+  const inT = usage.input_tokens ?? 0;
+  const outT = usage.output_tokens ?? 0;
+  const cRead = usage.cache_read_input_tokens ?? 0;
+  const cacheHit = (inT + cRead) > 0 ? (cRead / (inT + cRead) * 100).toFixed(0) : "0";
+  const lat = call.latency_ms != null ? `${Math.round(call.latency_ms)}ms` : "?";
+
+  const header = `<div class="pane-header">
+    <span class="role-dot" style="background:${roleColor(frame.role)}"></span>
+    <span class="tnum">T#${turn.turn_index}</span>
+    <span style="color:${roleColor(frame.role)}">${esc(frame.role)}</span>
+    ${stopHtml}
+    ${retryCount ? `<span class="stop" style="color:var(--err)">${retryCount} retry</span>` : ""}
+    <span class="cost">${fmtCost(call.cost_usd)}</span>
+    <span class="meta">${lat}</span>
+    <span class="meta">in:${inT} out:${outT} cache:${cRead} (${cacheHit}%)</span>
+    <span class="meta" style="margin-left:auto">${esc(call.model || "")}</span>
+    <button class="turn-pane-close" onclick="closeMobileTurnPane()" aria-label="close">✕</button>
+  </div>
+  ${renderMissionPane(frame)}`;
+
+  const inputHtml = renderInputLane(turn.input || [], frame.frame_id, turn.turn_index);
+  const preHtml = renderPreLane(turn.pre || []);
+  const callHtml = renderCallLane(attempts);
+  const postHtml = renderPostLane(turn.post || {}, call.response_text || "", CELL_FRAMES_BY_ID);
+
+  pane.innerHTML = `
+    ${header}
+    ${inputHtml}
+    ${preHtml}
+    ${callHtml}
+    ${postHtml}
+  `;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Full-request lazy loader — rendered inline inside the IN lane.
+// Fetches the reconstructed LLM request body (system + message
+// history + compactions + per-message provenance) from
+// /api/eval/runs/.../turns/<frame>/<turn_idx>/request.
+// ──────────────────────────────────────────────────────────────
+async function loadFullRequest(btn, frameId, turnIdx) {
+  const s = parseHashState();
+  if (!s.runId || !s.task || !s.preset) {
+    btn.textContent = "cell context lost";
+    return;
+  }
+  const out = btn.parentElement.querySelector(".full-req-body");
+  if (btn.dataset.loaded === "1") {
+    // Toggle collapse instead of re-fetching.
+    const isOpen = out.style.display !== "none";
+    out.style.display = isOpen ? "none" : "block";
+    btn.textContent = isOpen ? "show full request" : "hide";
+    return;
+  }
+  btn.textContent = "loading…";
+  btn.disabled = true;
+  const url = `/api/eval/runs/${encodeURIComponent(s.runId)}/cells/${encodeURIComponent(s.task)}/${encodeURIComponent(s.preset)}/turns/${encodeURIComponent(frameId)}/${turnIdx}/request`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      btn.textContent = `load failed (${r.status})`;
+      btn.disabled = false;
+      return;
+    }
+    const data = await r.json();
+    out.innerHTML = renderFullRequest(data);
+    out.style.display = "block";
+    btn.dataset.loaded = "1";
+    btn.textContent = "hide";
+    btn.disabled = false;
+  } catch (e) {
+    btn.textContent = "error: " + String(e).slice(0, 80);
+    btn.disabled = false;
+  }
+}
+
+function renderFullRequest(data) {
+  // Single unified view: the actual wire-format payload, annotated
+  // top-to-bottom with component labels (HEADER / BODY / FOOTER /
+  // TOOLS) and per-message provenance. Raw JSON stays at the tail
+  // as a collapsible block for copy/paste.
+  const rendered = data.rendered || {};
+  if (!rendered || rendered.error) {
+    return `<div class="full-section">
+      <div class="full-section-title">⚠ rendered request unavailable</div>
+      <div class="muted">${esc(rendered?.error || "no data")}</div>
+    </div>`;
+  }
+
+  const payload = rendered.api_payload || {};
+  const notes = Array.isArray(payload._notes) ? payload._notes : [];
+  const eventMsgs = data.messages || [];              // provenance source
+  const apiMsgs = rendered.api_messages || [];        // composer output
+  const hints = rendered.footer_hints || [];
+  const compactions = data.compactions || [];
+  const sys = data.system || {};
+  const principles = sys.principles || [];
+  const systemBlocks = (payload.system || []).length
+    ? payload.system
+    : (rendered.system_sections || []).map(s => ({ type: "text", text: s }));
+
+  // Map: index-in-apiMsgs → event-replay provenance. Composer
+  // preserves order and count of body messages; the tail footer
+  // message (when hints fire) is synthetic.
+  const bodyMsgs = apiMsgs.filter(m => !m.is_footer_note);
+  const footerMsgs = apiMsgs.filter(m => m.is_footer_note);
+
+  const pipelineSection = renderProviderPipeline(payload.model);
+  const headerTable = renderPayloadHeader(payload, data, compactions);
+  const headerSection = renderHeaderSection(systemBlocks, sys, principles);
+  const bodySection = renderBodySection(bodyMsgs, eventMsgs, compactions);
+  const footerSection = renderFooterSection(footerMsgs, hints);
+  const toolsSection = renderToolsSection(payload.tools || []);
+  const rawJsonBlock = renderRawJsonBlock(payload, notes);
+
+  return pipelineSection + headerTable + headerSection + bodySection + footerSection + toolsSection + rawJsonBlock;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Provider pipeline view — what path does this specific model's
+// input/output take between nature and the model? Different
+// providers have different layering responsibilities; knowing the
+// layering explains why local models need nature's text_tool_parser
+// fallback while frontier APIs don't.
+// ──────────────────────────────────────────────────────────────
+function detectProvider(model) {
+  const m = String(model || "").toLowerCase();
+  if (m.startsWith("claude-")) return "anthropic";
+  if (m.startsWith("gpt-") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4")) return "openai";
+  if (m.startsWith("gemini-")) return "gemini";
+  return "ollama";  // default assumption for anything else
+}
+
+const PROVIDER_PIPELINES = {
+  anthropic: {
+    label: "Anthropic Messages API",
+    subtitle: "structured I/O both directions · tool_use as first-class blocks",
+    request: [
+      { owner: "nature",   text: "compose LLMRequest (ContextComposer)" },
+      { owner: "nature",   text: "Anthropic SDK serializes dict → JSON" },
+      { owner: "wire",     text: "HTTPS POST /v1/messages (application/json)" },
+      { owner: "provider", text: "chat template + tokenize (opaque internal)" },
+      { owner: "model",    text: "model sees structured conversation" },
+    ],
+    response: [
+      { owner: "model",    text: "emit tokens" },
+      { owner: "provider", text: "parse into streaming content blocks (text / tool_use / thinking)" },
+      { owner: "wire",     text: "SSE events" },
+      { owner: "nature",   text: "accumulate into ContentBlock list + usage" },
+    ],
+    notes: [
+      "tool_use blocks carry a structural id that pairs with tool_result — no text-pattern matching required.",
+      "cache_control markers attach to specific blocks; prompt prefix cache lands at message granularity.",
+    ],
+  },
+  openai: {
+    label: "OpenAI Chat Completions API",
+    subtitle: "structured I/O · tool_calls on assistant messages · role=tool responses",
+    request: [
+      { owner: "nature",   text: "compose LLMRequest" },
+      { owner: "nature",   text: "map to OpenAI shape (tool_calls / tool role)" },
+      { owner: "wire",     text: "HTTPS POST /v1/chat/completions" },
+      { owner: "provider", text: "chat template + tokenize (opaque)" },
+      { owner: "model",    text: "model sees structured conversation" },
+    ],
+    response: [
+      { owner: "model",    text: "emit tokens" },
+      { owner: "provider", text: "parse into tool_calls (id/name/arguments) or content text" },
+      { owner: "wire",     text: "streaming chunks" },
+      { owner: "nature",   text: "merge choices, map back to ContentBlocks" },
+    ],
+    notes: [
+      "tool_calls.arguments is a JSON-encoded string — nature parses it before dispatching.",
+      "no cache_control (OpenAI has auto prefix caching since late 2024 but not API-level control).",
+    ],
+  },
+  gemini: {
+    label: "Google Gemini API",
+    subtitle: "structured I/O with parts-based content · functionCall/functionResponse pairing",
+    request: [
+      { owner: "nature",   text: "compose LLMRequest" },
+      { owner: "nature",   text: "map to contents:[{role, parts}] + tools:{functionDeclarations}" },
+      { owner: "wire",     text: "HTTPS POST /v1beta/models/{model}:generateContent" },
+      { owner: "provider", text: "tokenize (opaque)" },
+      { owner: "model",    text: "model sees structured conversation" },
+    ],
+    response: [
+      { owner: "model",    text: "emit tokens" },
+      { owner: "provider", text: "parse into candidates[].content.parts[] (text / functionCall)" },
+      { owner: "wire",     text: "streaming chunks" },
+      { owner: "nature",   text: "normalize to ContentBlocks" },
+    ],
+    notes: [
+      "functionCall has a structural name+args dict — similar reliability to Anthropic tool_use.",
+    ],
+  },
+  ollama: {
+    label: "Ollama (local model hosting)",
+    subtitle: "structured API but flattens to text internally · fragile tool parsing",
+    request: [
+      { owner: "nature",   text: "compose LLMRequest" },
+      { owner: "nature",   text: "map to Ollama /api/chat shape" },
+      { owner: "wire",     text: "HTTP POST /api/chat (local)" },
+      { owner: "provider", text: "apply model's chat template (Jinja2) — Llama-3 format / ChatML / etc." },
+      { owner: "provider", text: "flatten into single prompt string + tokenize" },
+      { owner: "model",    text: "model sees one text prompt (structure lost)" },
+    ],
+    response: [
+      { owner: "model",    text: "emit raw text" },
+      { owner: "provider", text: "scan for trained tool-call tokens (<tool_call>{...}</tool_call>)" },
+      { owner: "provider", text: "if matched → tool_calls field; if drifted → empty, text survives" },
+      { owner: "nature",   text: "consume structured tool_calls IF populated" },
+      { owner: "nature",   text: "FALLBACK: text_tool_parser.py if tool_calls empty but text looks like a call" },
+    ],
+    notes: [
+      "Drift happens when the model's training on tool tokens is imperfect — it may emit prose describing a tool call instead of the expected tag.",
+      "nature's fallback matches 4 patterns: fenced JSON code blocks, bare JSON objects, Python call syntax, loose Agent prose.",
+      "No native cache_control — every request reprocesses the full prompt.",
+    ],
+  },
+};
+
+const PIPELINE_OWNER_COLORS = {
+  nature:   "#c49bff",
+  wire:     "#9cdcfe",
+  provider: "#7fe0b0",
+  model:    "#ff9a9a",
+};
+
+function renderProviderPipeline(model) {
+  const kind = detectProvider(model);
+  const spec = PROVIDER_PIPELINES[kind] || PROVIDER_PIPELINES.ollama;
+  const renderStage = (s, i, last) => {
+    const color = PIPELINE_OWNER_COLORS[s.owner] || "var(--dim)";
+    return `<div class="pipeline-stage">
+      <span class="chip" style="color:${color}; border-color:${color}66">${esc(s.owner)}</span>
+      <span class="muted">${esc(s.text)}</span>
+    </div>${last ? "" : `<div class="pipeline-arrow muted">↓</div>`}`;
+  };
+  const reqHtml = spec.request.map((s, i, a) => renderStage(s, i, i === a.length - 1)).join("");
+  const respHtml = spec.response.map((s, i, a) => renderStage(s, i, i === a.length - 1)).join("");
+  const notesHtml = spec.notes.map(n => `<div class="muted">· ${esc(n)}</div>`).join("");
+
+  return `<details class="full-section section-pipeline" open>
+    <summary class="full-section-title">
+      PROVIDER — <span style="color:#7fe0b0">${esc(spec.label)}</span>
+      <span class="muted">· detected from model <code>${esc(model || "?")}</code></span>
+    </summary>
+    <div class="muted" style="margin:4px 0 8px 0; font-size:11px">${esc(spec.subtitle)}</div>
+    <div class="pipeline-split">
+      <div class="pipeline-column">
+        <div class="pipeline-column-title muted">REQUEST — nature → model</div>
+        ${reqHtml}
+      </div>
+      <div class="pipeline-column">
+        <div class="pipeline-column-title muted">RESPONSE — model → nature</div>
+        ${respHtml}
+      </div>
+    </div>
+    <div class="pipeline-notes">${notesHtml}</div>
+  </details>`;
+}
+
+function renderPayloadHeader(payload, data, compactions) {
+  const cmpLine = compactions.length
+    ? `<div class="muted">⚠ <strong>${compactions.length}</strong> body compaction${compactions.length>1?"s":""} happened before this turn — the messages list below is POST-compact. ${compactions.map(c => `<span class="muted">[${esc(c.strategy||"?")} ${c.before}→${c.after} tok @ event ${c.event_id}]</span>`).join(" ")}</div>`
+    : "";
+  return `<div class="full-section">
+    <div class="payload-meta">
+      <span class="chip">model</span> <code>${esc(payload.model || "?")}</code>
+      <span class="chip">max_tokens</span> <code class="muted">${payload.max_tokens == null ? "(runtime config)" : payload.max_tokens}</code>
+      <span class="chip">msgs</span> ${(data.message_count_reported ?? "?")}
+      <span class="chip">tools</span> ${(data.tool_count_reported ?? "?")}
+      <span class="muted" style="margin-left:auto">reported by llm.request</span>
+    </div>
+    ${cmpLine}
+  </div>`;
+}
+
+function renderHeaderSection(systemBlocks, sys, principles) {
+  // HEADER = the `system` parameter. Each block is either:
+  //   - the role.instructions (index 0)
+  //   - one of N principles sorted by priority
+  const bodyHtml = systemBlocks.length ? systemBlocks.map((b, i) => {
+    const text = b.type === "text" ? (b.text || "") : JSON.stringify(b);
+    const cache = b.cache_control ? ` <span class="chip" style="color:#c49bff; border-color:#c49bff44">cache</span>` : "";
+    // Try to label this block: first one is role.instructions; the
+    // rest are principles (in priority order). Emit a tight chip so
+    // the reader can see the provenance without opening a subpanel.
+    let label;
+    if (i === 0) {
+      label = `<span class="chip" style="color:#ffd86a; border-color:#ffd86a44">role.instructions</span>
+               <span class="muted">${esc(sys.role_name || "?")}</span>`;
+    } else {
+      const pr = principles[i - 1];
+      label = pr
+        ? `<span class="chip" style="color:#ffd86a; border-color:#ffd86a44">principle</span>
+           <span class="muted">source=${esc(pr.source || "?")}</span>`
+        : `<span class="chip">principle</span>`;
+    }
+    return `<div class="payload-item">
+      <div class="payload-item-head">
+        ${label}${cache}
+        <span class="muted" style="margin-left:auto">${text.length} chars · system[${i}]</span>
+      </div>
+      <pre>${esc(text)}</pre>
+    </div>`;
+  }).join("") : `<div class="muted">· (no system)</div>`;
+  return `<div class="full-section section-header">
+    <div class="full-section-title" style="color:#ffb96a">
+      HEADER — <span class="muted">payload.system · ${systemBlocks.length} block${systemBlocks.length===1?"":"s"}</span>
+    </div>
+    ${bodyHtml}
+  </div>`;
+}
+
+function renderBodySection(bodyMsgs, eventMsgs, compactions) {
+  // BODY = the `messages` parameter (minus the synthetic footer
+  // tail). Provenance for each message is pulled from the
+  // event-replay list by index — composer preserves order.
+  //
+  // After a body.compacted event, the event-replay list reset means
+  // the first N messages have provenance.kind=compacted_synthetic.
+  // Past that, it's the usual bootstrap / assistant / tool_result
+  // pattern.
+  if (!bodyMsgs.length) return `<div class="full-section section-body">
+    <div class="full-section-title" style="color:#9cdcfe">BODY — <span class="muted">payload.messages (no body messages)</span></div>
+  </div>`;
+
+  const rowsHtml = bodyMsgs.map((m, i) => {
+    const ev = eventMsgs[i] || {};
+    const prov = ev.provenance || {};
+    const provBadge = renderProvenanceBadge(prov);
+    const blocks = m.content || [];
+    const anyCache = blocks.some(b => b && b.cache_control);
+    const cacheChip = anyCache ? ` <span class="chip" style="color:#c49bff; border-color:#c49bff44">cache anchor</span>` : "";
+    const blocksHtml = blocks.map(b => renderFullBlock(b)).join("");
+    return `<div class="payload-item">
+      <div class="payload-item-head">
+        <span class="chip">role=${esc(m.role)}</span>
+        ${provBadge}${cacheChip}
+        <span class="muted" style="margin-left:auto">messages[${m.index}] · ${blocks.length} block${blocks.length===1?"":"s"}${ev.event_id != null ? ` · event ${ev.event_id}` : ""}</span>
+      </div>
+      <div class="full-msg-body">${blocksHtml}</div>
+    </div>`;
+  }).join("");
+
+  return `<div class="full-section section-body">
+    <div class="full-section-title" style="color:#9cdcfe">
+      BODY — <span class="muted">payload.messages · ${bodyMsgs.length} message${bodyMsgs.length===1?"":"s"} (conversation history)</span>
+    </div>
+    ${rowsHtml}
+  </div>`;
+}
+
+function renderFooterSection(footerMsgs, hints) {
+  // FOOTER = the tail user message the composer appends when any
+  // footer rule fires. If no hints fired, nothing is appended —
+  // still show the section so a reader can see "no footer" as a
+  // first-class state instead of wondering if something is missing.
+  if (!footerMsgs.length) {
+    return `<div class="full-section section-footer">
+      <div class="full-section-title" style="color:#c49bff">
+        FOOTER — <span class="muted">appended as a tail user message when rules fire · 0 fired this turn</span>
+      </div>
+      <div class="muted">· (no footer this turn — no rules matched)</div>
+    </div>`;
+  }
+  const hintsHtml = hints.length ? `<div class="muted" style="margin-top:4px">hints fired: ${
+    hints.map(h => `<span class="chip hint">${esc(h.source)}</span>`).join(" ")
+  }</div>` : "";
+  const rowsHtml = footerMsgs.map(m => {
+    const blocks = m.content || [];
+    const anyCache = blocks.some(b => b && b.cache_control);
+    const cacheChip = anyCache ? ` <span class="chip" style="color:#c49bff; border-color:#c49bff44">cache</span>` : "";
+    const blocksHtml = blocks.map(b => renderFullBlock(b)).join("");
+    return `<div class="payload-item">
+      <div class="payload-item-head">
+        <span class="chip">role=${esc(m.role)}</span>
+        <span class="chip" style="color:#c49bff; border-color:#c49bff44">[FRAMEWORK NOTE]</span>
+        ${cacheChip}
+        <span class="muted" style="margin-left:auto">messages[${m.index}] · synthetic (composer-injected)</span>
+      </div>
+      <div class="full-msg-body">${blocksHtml}</div>
+    </div>`;
+  }).join("");
+  return `<div class="full-section section-footer">
+    <div class="full-section-title" style="color:#c49bff">
+      FOOTER — <span class="muted">payload.messages tail · ${footerMsgs.length} synthetic message${footerMsgs.length===1?"":"s"} · ${hints.length} rule${hints.length===1?"":"s"} fired</span>
+    </div>
+    ${rowsHtml}
+    ${hintsHtml}
+  </div>`;
+}
+
+function renderToolsSection(tools) {
+  if (!tools.length) return `<div class="full-section section-tools">
+    <div class="full-section-title" style="color:#7fe0b0">TOOLS — <span class="muted">payload.tools (none registered)</span></div>
+  </div>`;
+  const rowsHtml = tools.map(t => {
+    const cache = t.cache_control ? ` <span class="chip" style="color:#c49bff; border-color:#c49bff44">cache</span>` : "";
+    const defer = t.defer_loading ? ` <span class="chip muted">defer</span>` : "";
+    const head = (t.description || "").split("\n")[0].slice(0, 160);
+    return `<details class="payload-item">
+      <summary>
+        <span class="chip">${esc(t.name)}</span>${defer}${cache}
+        <span class="muted">${esc(head)}</span>
+      </summary>
+      <pre>${esc(JSON.stringify(t.input_schema || {}, null, 2))}</pre>
+    </details>`;
+  }).join("");
+  return `<div class="full-section section-tools">
+    <div class="full-section-title" style="color:#7fe0b0">
+      TOOLS — <span class="muted">payload.tools · ${tools.length} tool${tools.length===1?"":"s"}</span>
+    </div>
+    ${rowsHtml}
+  </div>`;
+}
+
+function renderRawJsonBlock(payload, notes) {
+  const jsonPayload = { ...payload };
+  delete jsonPayload._notes;
+  const notesHtml = notes.length ? `<div class="api-payload-notes">${
+    notes.map(n => `<div>⚠ ${esc(n)}</div>`).join("")
+  }</div>` : "";
+  return `<details class="full-section section-raw">
+    <summary class="full-section-title">
+      raw JSON — the body passed to <code>client.messages.stream(**kw)</code> · click to expand
+      <button class="full-req-btn" style="margin-left:8px; padding:2px 6px; font-size:10px"
+              onclick="event.preventDefault(); copyApiPayload(this)">copy JSON</button>
+    </summary>
+    ${notesHtml}
+    <pre class="api-payload-raw">${esc(JSON.stringify(jsonPayload, null, 2))}</pre>
+  </details>`;
+}
+
+async function copyApiPayload(btn) {
+  const details = btn.closest("details");
+  const pre = details?.querySelector(".api-payload-raw");
+  if (!pre) return;
+  try {
+    await navigator.clipboard.writeText(pre.textContent);
+    const orig = btn.textContent;
+    btn.textContent = "copied";
+    setTimeout(() => { btn.textContent = orig; }, 1200);
+  } catch (e) {
+    btn.textContent = "copy failed";
+  }
+}
+
+const PROVENANCE_COLORS = {
+  user_input:          "#9cdcfe",
+  bootstrap:           "#ffb96a",
+  assistant_text:      "#c49bff",
+  assistant_tool_call: "#c49bff",
+  tool_result:         "#7fe0b0",
+  compacted_synthetic: "#ffd86a",
+};
+const PROVENANCE_LABELS = {
+  user_input:          "user input",
+  bootstrap:           "bootstrap (from parent)",
+  assistant_text:      "assistant (text)",
+  assistant_tool_call: "assistant (tool call)",
+  tool_result:         "tool result",
+  compacted_synthetic: "post-compact",
+};
+const PROVENANCE_TOOLTIPS = {
+  user_input:          "Human-authored message entered via chat.",
+  bootstrap:           "Seeded by a parent/sibling frame (e.g., receptionist→core handoff) before this agent's first LLM call.",
+  assistant_text:      "Reply this agent's LLM generated after an llm.response.",
+  assistant_tool_call: "Assistant message whose content includes a tool_use block — triggered the attached tool.started.",
+  tool_result:         "Injected back into the conversation after a tool.completed. Each block's tool_use_id links back to the originating tool.started.",
+  compacted_synthetic: "Written by body.compacted as a new message list (summary / anchor). Not a real chat turn.",
+};
+
+function renderProvenanceBadge(prov) {
+  if (!prov || !prov.kind) return "";
+  const c = PROVENANCE_COLORS[prov.kind] || "var(--dim)";
+  const lbl = PROVENANCE_LABELS[prov.kind] || prov.kind;
+  const tip = PROVENANCE_TOOLTIPS[prov.kind] || "";
+  let tail = "";
+  if (prov.kind === "tool_result" && prov.links?.length) {
+    tail = prov.links.map(l =>
+      l.source_event_id != null
+        ? ` ← <span class="muted">${esc(l.tool_name || "?")} @ event ${l.source_event_id}</span>`
+        : ` <span class="muted">(no matching tool.started)</span>`
+    ).join("");
+  } else if (prov.kind === "assistant_text" || prov.kind === "assistant_tool_call") {
+    if (prov.llm_response_event_id != null) {
+      tail = ` <span class="muted">← llm.response @ event ${prov.llm_response_event_id}</span>`;
+    }
+    if (prov.consumed_hint_event_id != null) {
+      tail += ` <span class="muted">· hint @ event ${prov.consumed_hint_event_id}</span>`;
+    }
+  } else if (prov.kind === "user_input" && prov.user_input_event_id != null) {
+    tail = ` <span class="muted">← user.input @ event ${prov.user_input_event_id}</span>`;
+  } else if (prov.kind === "bootstrap" && prov.bootstrap_from) {
+    tail = ` <span class="muted">from <strong>${esc(prov.bootstrap_from)}</strong></span>`;
+  } else if (prov.kind === "compacted_synthetic") {
+    tail = ` <span class="muted">(strategy=${esc(prov.strategy || "?")}, event ${prov.compaction_event_id})</span>`;
+  }
+  return `<span class="chip" style="color:${c}; border-color:${c}44" title="${esc(tip)}">${esc(lbl)}</span>${tail}`;
+}
+
+function renderFullBlock(b) {
+  if (!b || typeof b !== "object") return "";
+  const t = b.type;
+  if (t === "text") {
+    return `<div><span class="chip">text</span><pre>${esc(b.text || "")}</pre></div>`;
+  }
+  if (t === "tool_use") {
+    const inp = b.input || {};
+    return `<div><span class="chip">tool_use</span> <strong>${esc(b.name || "?")}</strong>
+      <span class="muted">${esc((b.id || "").slice(0, 32))}</span>
+      <pre>${esc(JSON.stringify(inp, null, 2))}</pre></div>`;
+  }
+  if (t === "tool_result") {
+    let content = b.content;
+    if (Array.isArray(content)) {
+      content = content.map(c => c && c.type === "text" ? c.text : JSON.stringify(c)).join("");
+    }
+    const cls = b.is_error ? "err" : "";
+    return `<div class="toolcall ${cls}"><div class="name">← ${b.is_error ? "ERR " : ""}tool_result ${esc((b.tool_use_id || "").slice(0, 32))}</div>
+      <pre>${esc(String(content || ""))}</pre></div>`;
+  }
+  if (t === "image") {
+    return `<div><span class="chip">image</span> <span class="muted">(omitted)</span></div>`;
+  }
+  return `<div><span class="chip">${esc(t || "?")}</span> <pre>${esc(JSON.stringify(b, null, 2).slice(0, 2000))}</pre></div>`;
+}
+
+function renderMissionPane(frame) {
+  const m = frame.mission;
+  if (!m) return "";
+  // Always-visible "what this agent is trying to do". Collapsed by
+  // default so long task briefings don't push IN/CALL/POST offscreen.
+  const first = (m.text || "").split("\n").find(l => l.trim()) || "";
+  return `<details class="mission-pane">
+    <summary>
+      <span class="chip" style="color:#ffd86a; border-color:#ffd86a44"
+            title="Delegation text seeded by ${esc(m.from_ || "?")} into this frame before its first LLM call. The agent's mission — constant across all turns.">mission</span>
+      <span class="muted">from ${esc(m.from_ || "?")} · event ${m.event_id}</span>
+      <span class="mission-head">${esc(first.slice(0, 120))}${first.length > 120 ? "…" : ""}</span>
+    </summary>
+    <pre>${esc(m.text)}</pre>
+  </details>`;
+}
+
+const IN_LABEL_TOOLTIP =
+  "IN shows only the NEW input since the previous turn " +
+  "(tool_result / user.input / hint). Click 'show full request' " +
+  "to reconstruct the entire conversation history that went into " +
+  "this LLM call.";
+
+function renderInputLane(items, frameId, turnIdx) {
+  const deltaBody = items.length
+    ? items.map(it => {
+        if (it.kind === "user_input") {
+          return `<div><span class="chip">user</span> <pre>${esc(it.text || "")}</pre></div>`;
+        }
+        if (it.kind === "bootstrap") {
+          return `<div><span class="chip" style="color:#ffd86a; border-color:#ffd86a44"
+            title="Delegation context from ${esc(it.from_ || "?")} — this frame's first LLM call was seeded with this text.">bootstrap from ${esc(it.from_ || "?")}</span>
+            <pre>${esc(it.text || "")}</pre></div>`;
+        }
+        if (it.kind === "tool_results") {
+          return it.results.map(r => {
+            const cls = r.is_error ? "err" : "";
+            return `<div class="toolcall ${cls}">
+              <div class="name">← ${r.is_error ? "ERR " : ""}tool_result</div>
+              <pre>${esc(r.content || "")}</pre>
+            </div>`;
+          }).join("");
+        }
+        if (it.kind === "hint") {
+          return it.hints.map(h => `<div><span class="chip hint">hint: ${esc(h.source)}</span>
+            <span class="muted" title="${esc(h.text)}">${esc((h.text || "").split("\n")[0].slice(0, 120))}…</span>
+          </div>`).join("");
+        }
+        return "";
+      }).join("")
+    : `<div class="muted">· (no new input — first turn or no events between calls)</div>`;
+
+  const fullControl = `
+    <div class="in-full-wrap">
+      <button class="full-req-btn"
+              onclick="loadFullRequest(this, '${esc(frameId)}', ${turnIdx})">
+        show full request
+      </button>
+      <span class="muted" style="font-size:10.5px">
+        reconstructed from events — system prompt + entire message history
+      </span>
+      <div class="full-req-body" style="display:none"></div>
+    </div>`;
+
+  return `<div class="lane lane-input"><span class="label" title="${esc(IN_LABEL_TOOLTIP)}">IN</span>
+    <div class="body">
+      <div class="in-delta">
+        <div class="muted" style="font-size:10px; letter-spacing:0.04em; text-transform:uppercase">delta since last turn</div>
+        ${deltaBody}
+      </div>
+      ${fullControl}
+    </div>
+  </div>`;
+}
+
+function renderPreLane(items) {
+  if (!items.length) {
+    return `<div class="lane lane-pre empty"><span class="label">PRE</span><span class="body">·</span></div>`;
+  }
+  const body = items.map(it => {
+    if (it.kind === "body_compacted") {
+      return `<div><span class="chip">body.compacted</span> <span class="muted">${esc(it.strategy || "")} ${it.before}→${it.after} tok</span></div>`;
+    }
+    return `<div><span class="chip">${esc(it.kind || "")}</span></div>`;
+  }).join("");
+  return `<div class="lane lane-pre"><span class="label">PRE</span><div class="body">${body}</div></div>`;
+}
+
+function renderCallLane(attempts) {
+  if (!attempts.length) {
+    return `<div class="lane lane-call empty"><span class="label">CALL</span><span class="body">·</span></div>`;
+  }
+  if (attempts.length === 1 && attempts[0].ok) {
+    // Concise success — the header already shows all the numbers;
+    // this lane becomes a single chip.
+    return `<div class="lane lane-call"><span class="label">CALL</span>
+      <div class="body"><div><span class="chip ok">ok</span> <span class="muted">request ${esc(attempts[0].request_id || "")}</span></div></div></div>`;
+  }
+  const rows = attempts.map((a, i) => {
+    if (a.ok) {
+      return `<div><span class="chip ok">attempt ${i + 1}: ok</span> <span class="muted">stop=${esc(a.stop_reason || "")}</span></div>`;
+    }
+    return `<div><span class="chip err">attempt ${i + 1}: ${esc(a.error_type || "")}</span> <span class="muted">${esc((a.message || "").slice(0, 160))}</span></div>`;
+  }).join("");
+  return `<div class="lane lane-call"><span class="label">CALL</span><div class="body">${rows}</div></div>`;
+}
+
+function renderPostLane(post, responseText, byId, _rendered) {
+  const tool_uses = post.tool_uses || [];
+  const parts = [];
+  if (responseText) {
+    parts.push(`<div><span class="chip">text</span> <pre>${esc(responseText)}</pre></div>`);
+  }
+  for (const tu of tool_uses) {
+    const cls = tu.is_error ? "err" : "";
+    const inputSummary = summarizeToolInput(tu.input || {});
+    // For Agent spawns, add a chip that selects the child's first
+    // turn in the graph (right pane re-renders for that turn).
+    const spawnRef = tu.spawned_frame_id && byId[tu.spawned_frame_id]
+      ? ` <span class="chip" style="cursor:pointer; color:var(--accent); border-color:rgba(106,168,255,0.4)"
+               onclick="jumpToChildFirstTurn('${esc(tu.spawned_frame_id)}')">
+           → open ${esc(byId[tu.spawned_frame_id].role)}
+         </span>`
+      : "";
+    parts.push(`<div class="toolcall ${cls}">
+      <div class="name">${tu.is_error ? "ERR " : "→ "}${esc(tu.name)}</div>
+      <div>
+        ${inputSummary}
+        ${spawnRef}
+        ${tu.output ? `<pre>${esc(tu.output)}</pre>` : ""}
+      </div>
+    </div>`);
+  }
+  if (!parts.length) {
+    return `<div class="lane lane-post empty"><span class="label">POST</span><span class="body">·</span></div>`;
+  }
+  return `<div class="lane lane-post"><span class="label">POST</span><div class="body">${parts.join("")}</div></div>`;
+}
+
+function jumpToChildFirstTurn(fid) {
+  const node = document.querySelector(
+    `#cell-detail .frame-graph circle.node[data-frame="${fid}"][data-turn="0"]`
+  );
+  if (node) node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+function summarizeToolInput(input) {
+  if (!input || typeof input !== "object") return `<span class="muted">${esc(String(input))}</span>`;
+  // Priority keys to show inline, rest as a <pre> block below so the
+  // detail pane isn't lossy (TodoWrite.todos, Bash stdin, etc.).
+  const keys = ["name", "file_path", "pattern", "command", "query"];
+  const shown = [];
+  for (const k of keys) {
+    if (k in input) shown.push(`<span class="muted">${esc(k)}=${esc(String(input[k]).slice(0, 120))}</span>`);
+  }
+  const skip = new Set([...keys, "prompt", "old_string", "new_string", "content"]);
+  const others = Object.keys(input).filter(k => !skip.has(k));
+  let long = "";
+  if (others.length) {
+    const obj = {};
+    for (const k of others) obj[k] = input[k];
+    long += `<pre>${esc(JSON.stringify(obj, null, 2))}</pre>`;
+  }
+  // Special case: prompt (Agent) gets its own <pre>.
+  // (Edit/Write old/new are already in the dedicated "Agent edits" section — skip here.)
+  if (input.prompt) long += `<pre>${esc(String(input.prompt))}</pre>`;
+  if (!shown.length && !long) {
+    return `<span class="muted">${esc(JSON.stringify(input).slice(0, 150))}</span>`;
+  }
+  return shown.join(" ") + long;
+}
+
+function renderTlRow(ev) {
+  const cls = ["tl-row"];
+  let desc = "";
+  if (ev.type === "frame.opened") {
+    cls.push("frame-row");
+    desc = `open <strong>${esc(ev.role)}</strong>` + (ev.model ? ` <span class="muted">(${esc(ev.model)})</span>` : "");
+  } else if (ev.type === "frame.resolved") {
+    cls.push("frame-row");
+    desc = `resolve ${esc(ev.role)}`;
+  } else if (ev.type === "frame.errored") {
+    cls.push("frame-row", "error-row");
+    desc = `<strong>ERR</strong> ${esc(ev.role)} — ${esc(ev.error_type)}: ${esc(ev.message)}`;
+  } else if (ev.type === "llm.response") {
+    desc = `response <span class="muted">stop=${esc(ev.stop_reason)}</span>`;
+  } else if (ev.type === "llm.error") {
+    cls.push("error-row");
+    desc = `<strong>LLM ERR</strong> ${esc(ev.error_type)}: ${esc(ev.message)}`;
+  } else if (ev.type === "tool.started") {
+    const inp = ev.tool_input || {};
+    const key = inp.file_path || inp.pattern || inp.command || inp.name || "";
+    desc = `tool <strong>${esc(ev.tool_name)}</strong>` + (key ? ` <span class="muted">${esc(String(key).slice(0, 80))}</span>` : "");
+  } else if (ev.type === "tool.completed") {
+    if (ev.is_error) cls.push("error-row");
+    desc = `← ${esc(ev.tool_name)} ${ev.is_error ? "<strong>err</strong>: " : ""}<span class="muted">${esc(ev.output || "")}</span>`;
+  } else if (ev.type === "hint.injected") {
+    cls.push("hint-row");
+    const sources = (ev.hints || []).map(h => h.source).join(", ");
+    desc = `hint [${esc(sources)}]`;
+  } else if (ev.type === "body.compacted") {
+    desc = `compact <span class="muted">${esc(ev.strategy)} ${ev.tokens_before}→${ev.tokens_after}</span>`;
+  } else {
+    desc = esc(ev.type);
+  }
+  return `<div class="${cls.join(" ")}">
+    <span class="id">${ev.id ?? ""}</span>
+    <span class="type">${esc(ev.type)}</span>
+    <span class="muted">${esc(ev.role || "")}</span>
+    <span>${desc}</span>
+  </div>`;
+}
+
+async function loadDiff(aId) {
+  const bId = $("diff-other").value;
+  if (!bId) return;
+  const r = await fetch(`/api/eval/diff?a=${encodeURIComponent(aId)}&b=${encodeURIComponent(bId)}`);
+  if (!r.ok) {
+    $("diff-out").innerHTML = `<div class="empty">diff failed (${r.status})</div>`;
+    return;
+  }
+  const body = await r.json();
+  $("diff-out").innerHTML = `<pre class="diff-block">${esc(body.markdown)}</pre>`;
+}
+
+loadRuns();
+</script>
+</body>
+</html>

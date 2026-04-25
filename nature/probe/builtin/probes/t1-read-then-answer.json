@@ -1,0 +1,34 @@
+{
+  "id": "t1-read-then-answer",
+  "title": "Read a file and answer about its content",
+  "tier": 1,
+  "dimensions": [
+    "tool.emit",
+    "tool.result.consume"
+  ],
+  "allowed_tools": [
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "config.txt",
+        "content": "version=1.2.3\nmode=production\n"
+      }
+    ]
+  },
+  "prompt": "Read the file `{workspace}/config.txt` and tell me the value of `version`. Answer with JUST the version string on a single line.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Read"
+    },
+    {
+      "kind": "final_text",
+      "contains": "1.2.3"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

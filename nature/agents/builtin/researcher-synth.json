@@ -1,0 +1,6 @@
+{
+  "model": "local-ollama::qwen2.5:14b",
+  "allowed_tools": [],
+  "allowed_interventions": null,
+  "instructions": "researcher-synth.md"
+}

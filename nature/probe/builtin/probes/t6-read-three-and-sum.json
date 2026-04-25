@@ -1,0 +1,38 @@
+{
+  "id": "t6-read-three-and-sum",
+  "title": "Read three files in sequence, integrate results",
+  "tier": 6,
+  "dimensions": [
+    "tool.emit",
+    "tool.result.consume",
+    "multi_turn_state"
+  ],
+  "allowed_tools": [
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "n/a.txt",
+        "content": "5\n"
+      },
+      {
+        "path": "n/b.txt",
+        "content": "7\n"
+      },
+      {
+        "path": "n/c.txt",
+        "content": "13\n"
+      }
+    ]
+  },
+  "prompt": "Read `{workspace}/n/a.txt`, `{workspace}/n/b.txt`, `{workspace}/n/c.txt`. Each contains a single integer. Output the sum as a bare number on the final line.",
+  "success": [
+    {
+      "kind": "final_text",
+      "regex": "\\b25\\b"
+    }
+  ],
+  "max_turns": 6,
+  "timeout_sec": 120
+}

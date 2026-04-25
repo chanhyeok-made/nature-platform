@@ -1,0 +1,28 @@
+{
+  "id": "t5-agent-delegation-basic",
+  "title": "Emit an Agent tool_use with name + prompt",
+  "tier": 5,
+  "dimensions": [
+    "tool.emit",
+    "delegation.format"
+  ],
+  "allowed_tools": [
+    "Agent"
+  ],
+  "prompt": "Delegate to a sub-agent named `researcher` with the prompt `find all files mentioning PURPLE in the current directory`. Use the Agent tool. Do NOT execute the work yourself.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Agent",
+      "input_contains": {
+        "name": "researcher"
+      },
+      "input_regex": {
+        "prompt": "PURPLE"
+      }
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

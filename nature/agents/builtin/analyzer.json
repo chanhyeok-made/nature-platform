@@ -1,0 +1,11 @@
+{
+  "model": "anthropic::claude-sonnet-4-6",
+  "allowed_tools": [
+    "Read",
+    "Glob",
+    "Grep",
+    "Bash"
+  ],
+  "allowed_interventions": null,
+  "instructions": "analyzer.md"
+}

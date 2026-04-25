@@ -1,0 +1,21 @@
+{
+  "id": "s1-csv-parser",
+  "title": "Synthetic: toy CSV parser with 3 edge-case bugs",
+  "category": "bug-fix",
+  "tags": ["synthetic", "python", "parsing"],
+  "size": "small",
+  "prompt": "작업 공간에 있는 `mycsv.py` 를 고쳐 `tests/test_mycsv.py` 가 전부 통과하도록 하세요.\n\n## 현재 동작의 문제\n\n`parse_row(line: str) -> list[str]` 가 **세 가지 edge case** 에서 잘못된 결과를 냅니다. 테스트가 명세입니다 — 실행해서 세 가지 실패 원인을 정확히 파악하고 최소 수정으로 고쳐주세요.\n\n## 힌트\n\n- 큰 틀에서 `parse_row` 는 따옴표(`\"`) 안의 쉼표를 보호해야 합니다.\n- 이중 따옴표 이스케이프 규칙(`\"\"` → 리터럴 `\"`)도 들어있습니다.\n- 끝에 공백, 빈 필드, 따옴표 안 개행 등 corner case 가 테스트에 명시돼 있습니다.\n\n## 수용 테스트\n\n`tests/test_mycsv.py::*` 4개 전부 pass.\n\n## 제약\n\n- stdlib 의 `csv` 모듈을 그대로 쓰는 건 금지 (과제 의도와 다름). 순수 Python 으로 풀어주세요.\n- 파일 추가 없이 `mycsv.py` 한 곳만 고치는 게 기대 동작입니다.",
+  "target": {
+    "repo": "local",
+    "ref": "HEAD"
+  },
+  "setup": {
+    "type": "apply_patch_file",
+    "patch_path": "seed.patch"
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": ["tests/test_mycsv.py"],
+    "timeout_sec": 180
+  }
+}

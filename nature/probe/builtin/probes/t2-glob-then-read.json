@@ -1,0 +1,41 @@
+{
+  "id": "t2-glob-then-read",
+  "title": "Glob to find file, then Read it",
+  "tier": 2,
+  "dimensions": [
+    "tool.emit",
+    "tool.result.consume",
+    "multi_turn_state"
+  ],
+  "allowed_tools": [
+    "Glob",
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "notes/important.md",
+        "content": "The secret code is PURPLE\n"
+      }
+    ]
+  },
+  "prompt": "There is exactly one markdown file under `{workspace}/notes/`. Find it with Glob, then read its content. Tell me the secret code mentioned in the file (one word).",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Glob"
+    },
+    {
+      "kind": "tool_use",
+      "at_index": 1,
+      "name": "Read"
+    },
+    {
+      "kind": "final_text",
+      "contains": "PURPLE"
+    }
+  ],
+  "max_turns": 4,
+  "timeout_sec": 90
+}

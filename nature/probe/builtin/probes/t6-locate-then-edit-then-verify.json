@@ -1,0 +1,36 @@
+{
+  "id": "t6-locate-then-edit-then-verify",
+  "title": "Find → Edit → Re-read to verify",
+  "tier": 6,
+  "dimensions": [
+    "multi_turn_state",
+    "edit.discipline"
+  ],
+  "allowed_tools": [
+    "Grep",
+    "Read",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "fix_me.py",
+        "content": "VERSION = '0.1.0'\n"
+      }
+    ]
+  },
+  "prompt": "Find the VERSION constant in `{workspace}/fix_me.py`, update it to `'1.0.0'`, then re-read the file to verify. Final answer should be `verified` on the last line.",
+  "success": [
+    {
+      "kind": "file_state",
+      "path": "fix_me.py",
+      "contains": "1.0.0"
+    },
+    {
+      "kind": "final_text",
+      "contains": "verified"
+    }
+  ],
+  "max_turns": 6,
+  "timeout_sec": 150
+}

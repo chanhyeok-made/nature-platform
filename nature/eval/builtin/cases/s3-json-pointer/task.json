@@ -1,0 +1,21 @@
+{
+  "id": "s3-json-pointer",
+  "title": "Synthetic: JSON Pointer (RFC 6901) parser with 3 edge-case bugs",
+  "category": "bug-fix",
+  "tags": ["synthetic", "python", "parsing", "rfc-6901"],
+  "size": "small",
+  "prompt": "작업 공간의 `jsonptr.py` 에 있는 `resolve(doc, pointer)` 를 고쳐 `tests/test_jsonptr.py` 가 전부 통과하도록 하세요.\n\n## 현재 동작의 문제\n\n`resolve(doc, pointer)` 가 RFC 6901 (JSON Pointer) 의 **세 가지 케이스** 를 잘못 처리합니다. 테스트가 명세입니다 — 실행해서 실패 원인을 정확히 파악하고 최소 수정으로 고쳐주세요.\n\n## 힌트 (RFC 6901 요지)\n\n- 포인터는 `/` 로 시작해서 **토큰들의 시퀀스** 입니다. 첫 번째 `/` 는 \"루트 진입\" 표시일 뿐이고 키가 아닙니다.\n- 빈 문자열 포인터 `\"\"` 는 **문서 전체** 를 가리킵니다.\n- 토큰 안의 `~1` 은 리터럴 `/` 로, `~0` 은 리터럴 `~` 로 escape 해야 합니다. **순서가 중요**: `~1` → `/` 먼저, `~0` → `~` 나중. 반대로 하면 `~01` 같은 입력이 틀어집니다.\n\n## 수용 테스트\n\n`tests/test_jsonptr.py::*` 4개 전부 pass.\n\n## 제약\n\n- 표준 라이브러리만 사용 (외부 패키지 추가 금지).\n- `jsonptr.py` 한 곳만 수정. 파일 추가 금지.\n- `resolve` 가 40 줄을 넘지 않도록 (구현 간결성 기대).",
+  "target": {
+    "repo": "local",
+    "ref": "HEAD"
+  },
+  "setup": {
+    "type": "apply_patch_file",
+    "patch_path": "seed.patch"
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": ["tests/test_jsonptr.py"],
+    "timeout_sec": 180
+  }
+}

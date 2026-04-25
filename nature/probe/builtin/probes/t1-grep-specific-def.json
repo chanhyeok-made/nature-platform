@@ -1,0 +1,35 @@
+{
+  "id": "t1-grep-specific-def",
+  "title": "Grep for a pattern that uniquely matches",
+  "tier": 1,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Grep"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "api.py",
+        "content": "def get_user(uid): pass\ndef post_user(data): pass\n"
+      }
+    ]
+  },
+  "prompt": "Find all functions whose name starts with `get_`. Use the Grep tool with an appropriate regex pattern.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Grep",
+      "input_regex": {
+        "pattern": "get_"
+      }
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}

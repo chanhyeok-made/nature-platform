@@ -1,0 +1,8 @@
+diff --git a/utils.py b/utils.py
+new file mode 100644
+index 0000000..5df2688
+--- /dev/null
++++ b/utils.py
+@@ -0,0 +1,2 @@
++def divide(a, b):
++    return a / b

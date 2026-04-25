@@ -1,0 +1,34 @@
+{
+  "id": "t3-edit-preserve-indent",
+  "title": "Apply an Edit that preserves surrounding indentation",
+  "tier": 3,
+  "dimensions": [
+    "edit.discipline"
+  ],
+  "allowed_tools": [
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "mod.py",
+        "content": "class C:\n    def method(self):\n        return 1\n"
+      }
+    ]
+  },
+  "prompt": "In `{workspace}/mod.py`, change the body of `method` from `return 1` to `return 42`. Use the Edit tool. Preserve indentation (8 spaces) exactly.\n\nold_string (exactly these bytes including leading whitespace):\n```\n        return 1\n```\n\nnew_string:\n```\n        return 42\n```",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Edit"
+    },
+    {
+      "kind": "file_state",
+      "path": "mod.py",
+      "regex": "def method\\(self\\):\\n        return 42"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 90
+}

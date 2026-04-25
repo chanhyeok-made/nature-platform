@@ -1,0 +1,9 @@
+{
+  "model": "anthropic::claude-sonnet-4-6",
+  "allowed_tools": [
+    "Agent",
+    "TodoWrite"
+  ],
+  "allowed_interventions": null,
+  "instructions": "core.md"
+}

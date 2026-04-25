@@ -1,0 +1,3142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nature · dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-elev: #0f141c;
+    --panel: #141a22;
+    --panel-hover: #1a2230;
+    --border: #2a3340;
+    --border-soft: #1e2530;
+    --text: #e6edf3;
+    --text-dim: #7d8590;
+    --text-dimer: #58606a;
+    --accent: #58a6ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --purple: #bc8cff;
+    --pink: #ff7b72;
+    --cyan: #79c0ff;
+    --lilac: #d2a8ff;
+    --depth-0: var(--accent);
+    --depth-1: var(--purple);
+    --depth-2: var(--cyan);
+    --depth-3: var(--pink);
+    --depth-4: var(--lilac);
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dimer); }
+
+  /* ---- Top header ---- */
+  header.top {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(10, 14, 20, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header.top .brand {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  header.top .brand .bullet { color: var(--accent); font-size: 18px; line-height: 0; }
+  header.top .brand .name { color: var(--text); }
+  header.top .meta {
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin-left: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  header.top .hdr-btn {
+    padding: 5px 11px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  header.top .hdr-btn:hover {
+    background: var(--panel-hover);
+    color: var(--text);
+    border-color: var(--text-dimer);
+  }
+  header.top .status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  header.top .status::before {
+    content: "";
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-dimer);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  header.top .status.connected::before {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+  }
+  header.top .status.error::before {
+    background: var(--error);
+    box-shadow: 0 0 8px var(--error);
+  }
+
+  /* ---- Pulse bar ---- */
+  #pulse-bar {
+    position: sticky;
+    top: 45px;
+    z-index: 20;
+    background: rgba(10, 14, 20, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 6px 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  #pulse-bar.active {
+    display: flex;
+    animation: pulseFade 1.6s ease-in-out infinite;
+  }
+  #pulse-bar .spin { color: var(--accent); font-size: 13px; width: 12px; text-align: center; }
+  #pulse-bar .activity { color: var(--text); font-weight: 500; }
+  #pulse-bar .meta { color: var(--text-dim); margin-left: auto; }
+  @keyframes pulseFade {
+    0%   { opacity: 0.6; }
+    50%  { opacity: 1.0; }
+    100% { opacity: 0.6; }
+  }
+
+  /* ---- Main stream ---- */
+  main#stream {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 20px 140px 20px;
+  }
+  .empty {
+    padding: 120px 20px;
+    text-align: center;
+    color: var(--text-dimer);
+  }
+  .empty .big {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .empty .hint { font-size: 12px; }
+
+  /* ---- Turn (squash-merge node on main) ---- */
+  .turn {
+    margin: 18px 0;
+  }
+
+  /* Expand/collapse bar — the "squashed commit" summary line */
+  .turn-bar {
+    margin: 6px 0 10px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 2px solid var(--border);
+    background: var(--bg-elev);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    cursor: pointer;
+    user-select: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .turn-bar:hover {
+    background: var(--panel);
+    color: var(--text);
+    border-left-color: var(--text-dimer);
+  }
+  .turn.expanded > .turn-bar {
+    border-left-color: var(--accent);
+    background: var(--panel);
+    color: var(--text);
+  }
+  .turn-bar .caret {
+    width: 12px;
+    text-align: center;
+    color: var(--text-dimer);
+    transition: transform 0.15s;
+  }
+  .turn.expanded > .turn-bar .caret { transform: rotate(90deg); }
+  .turn-bar .bits { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .turn-bar .fork-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    margin-left: 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    background: rgba(88, 166, 255, 0.12);
+    color: var(--accent, #58a6ff);
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid rgba(88, 166, 255, 0.25);
+  }
+  .turn-bar .fork-btn:hover {
+    background: rgba(88, 166, 255, 0.24);
+  }
+  .turn-bar .fork-btn.pending {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .turn-bar .state-pill {
+    font-size: 10px;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dimer);
+  }
+  .turn-bar .state-pill.running {
+    color: var(--warning);
+    border-color: rgba(210, 153, 34, 0.45);
+  }
+  .turn-bar .state-pill.resolved {
+    color: var(--success);
+    border-color: rgba(63, 185, 80, 0.4);
+  }
+  .turn-bar .state-pill.error {
+    color: var(--error);
+    border-color: rgba(248, 81, 73, 0.4);
+  }
+
+  .turn-steps {
+    display: none;
+    margin: 8px 0 12px;
+    padding: 4px 0 4px 20px;
+    border-left: 2px dashed var(--border-soft);
+  }
+  .turn.expanded > .turn-steps { display: block; }
+  .turn-steps:empty { display: none !important; }
+
+  /* ---- Message bubble ---- */
+  .msg {
+    margin: 10px 0;
+    padding: 10px 14px;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .msg .who {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .msg .body {
+    /* Markdown renderer produces real block elements now
+       (<p>, <h1..6>, <ul>, <pre>, …) so we DON'T want pre-wrap —
+       whitespace inside <p> collapses naturally, while code
+       blocks keep their own whitespace via <pre>. */
+    word-wrap: break-word;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  /* Markdown elements inside message bodies */
+  .msg .body > :first-child { margin-top: 0; }
+  .msg .body > :last-child { margin-bottom: 0; }
+  .msg .body p {
+    margin: 0 0 8px 0;
+  }
+  .msg .body p:last-child { margin-bottom: 0; }
+  .msg .body h1, .msg .body h2, .msg .body h3,
+  .msg .body h4, .msg .body h5, .msg .body h6 {
+    margin: 12px 0 6px 0;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .msg .body h1 { font-size: 18px; font-weight: 700; }
+  .msg .body h2 { font-size: 16px; font-weight: 700; }
+  .msg .body h3 { font-size: 15px; font-weight: 600; }
+  .msg .body h4 { font-size: 14px; font-weight: 600; }
+  .msg .body h5, .msg .body h6 { font-size: 13px; font-weight: 600; }
+  .msg .body ul, .msg .body ol {
+    margin: 4px 0 8px 0;
+    padding-left: 22px;
+  }
+  .msg .body li { margin: 2px 0; }
+  .msg .body blockquote {
+    margin: 6px 0;
+    padding: 4px 12px;
+    border-left: 3px solid var(--border);
+    color: var(--text-dim);
+  }
+  .msg .body code {
+    /* inline code */
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: var(--bg-elev);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border-soft);
+  }
+  .msg .body pre.md-code {
+    margin: 8px 0;
+    padding: 10px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .msg .body pre.md-code code {
+    /* Reset inline-code styling when inside a pre block */
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .msg .body pre.md-code[data-lang]::before {
+    content: attr(data-lang);
+    display: block;
+    color: var(--text-dimer);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  /* `​`​`diff fenced block rendered as a colored diff inside a message
+     body. Reuses the .diff-line structure from the Edit tool card so
+     the two read identically, but scopes its container to .msg .body
+     so it doesn't leak styles anywhere else. */
+  .msg .body .md-diff {
+    margin: 8px 0;
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    background: #0a0d11;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .msg .body .md-diff .diff-body {
+    max-height: 420px;
+    overflow: auto;
+    padding: 6px 0;
+  }
+  /* Reset inline-code styling for text inside the md-diff block so
+     code-like substrings don't get re-boxed by .msg .body code. */
+  .msg .body .md-diff code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .msg .body strong { font-weight: 700; color: var(--text); }
+  .msg .body em { font-style: italic; }
+  .msg .body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: rgba(88, 166, 255, 0.4);
+  }
+  .msg .body a:hover { text-decoration-color: var(--accent); }
+  .msg .body table.md-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px 0;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+  }
+  .msg .body table.md-table thead {
+    background: var(--bg-elev);
+  }
+  .msg .body table.md-table th,
+  .msg .body table.md-table td {
+    padding: 6px 10px;
+    border: 1px solid var(--border-soft);
+    vertical-align: top;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .msg .body table.md-table th {
+    font-weight: 700;
+    color: var(--text);
+  }
+  .msg .body table.md-table tbody tr:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.015);
+  }
+  /* Cells that contain long words (paths, ids) should still allow
+     wrapping when the table can't grow any wider. */
+  .msg .body table.md-table td code,
+  .msg .body table.md-table th code {
+    white-space: normal;
+    word-break: break-all;
+  }
+  .msg.user {
+    border-left-color: var(--accent);
+    background: rgba(88, 166, 255, 0.05);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    cursor: default;
+  }
+  .msg.user .who { color: var(--accent); }
+  .msg.assistant {
+    border-left-color: var(--success);
+    background: rgba(63, 185, 80, 0.04);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .msg.assistant:hover { background: rgba(63, 185, 80, 0.07); }
+  .msg.assistant .who { color: var(--success); }
+  .msg.intermediate {
+    margin: 6px 0;
+    padding: 6px 12px;
+    font-size: 13px;
+    background: none;
+    border-radius: 0;
+    border-left-color: var(--text-dimer);
+  }
+  .msg.intermediate:hover { background: var(--bg-elev); }
+  .msg.intermediate .who { color: var(--text-dimer); }
+
+  /* Annotation badges under assistant messages */
+  .msg .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .msg .badges:empty { display: none; }
+  .badge {
+    padding: 1px 7px;
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge.tok  { color: var(--text); }
+  .badge.stop { color: var(--cyan); border-color: rgba(121, 192, 255, 0.3); }
+  .badge.synthesis {
+    color: var(--purple);
+    border-color: rgba(188, 140, 255, 0.4);
+    cursor: help;
+  }
+  .badge.nudge {
+    color: var(--warning);
+    border-color: rgba(210, 153, 34, 0.35);
+    cursor: help;
+  }
+
+  /* ---- Parallel batch marker ---- */
+  /* Steps (tool / sub_agent) that ran inside a parallel batch get
+     an accent-colored left border plus a `∥` glyph in the corner,
+     and consecutive siblings of the same group visually connect
+     their borders so the batch reads as one block. */
+  .parallel-batched {
+    position: relative;
+    border-left: 3px solid var(--accent, #58a6ff) !important;
+    padding-left: 12px !important;
+    background: linear-gradient(
+      90deg,
+      rgba(88, 166, 255, 0.07) 0,
+      transparent 40px
+    );
+  }
+  .parallel-batched::before {
+    content: "∥";
+    position: absolute;
+    left: -10px;
+    top: 6px;
+    color: var(--accent, #58a6ff);
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--bg, #0d1117);
+    padding: 0 2px;
+  }
+  /* Tighten vertical gap between siblings in the same group so
+     they read as one block instead of separate cards. */
+  .parallel-batched + .parallel-batched {
+    margin-top: 2px !important;
+  }
+
+  /* ---- Tool card ---- */
+  .tool {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .tool:hover { border-color: var(--border); }
+  .tool.running {
+    border-color: var(--warning);
+    animation: pulseBorder 1.4s ease-in-out infinite;
+  }
+  @keyframes pulseBorder {
+    0%, 100% { border-color: var(--warning); }
+    50%      { border-color: rgba(210, 153, 34, 0.35); }
+  }
+  .tool.done { border-left: 3px solid var(--success); padding-left: 10px; }
+  .tool.err  { border-left: 3px solid var(--error);   padding-left: 10px; }
+  .tool .head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool .icon { color: var(--warning); width: 14px; text-align: center; }
+  .tool.done .icon { color: var(--success); }
+  .tool.err  .icon { color: var(--error); }
+  .tool .name { color: var(--text); font-weight: 600; }
+  .tool .args-inline {
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .tool .duration {
+    color: var(--text-dimer);
+    font-size: 11px;
+    margin-left: auto;
+  }
+  .tool .result-inline {
+    margin-top: 6px;
+    padding-top: 6px;
+    padding-left: 18px;
+    border-top: 1px dashed var(--border-soft);
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tool .result-inline:empty { display: none; }
+
+  /* ---- Edit / Write / MultiEdit diff block ---- */
+  .tool .diff-slot:empty { display: none; }
+  .tool.with-diff { cursor: default; }
+  /* Defensive isolation — any future broadly-scoped selector (say,
+     a new `.msg .body pre` rule added later) should not be able to
+     leak styles into the tool diff block. Reset the four things most
+     likely to cascade into a code-shaped child. */
+  .diff-block,
+  .diff-block * {
+    font-family: var(--font-mono);
+    background-image: none;
+  }
+  .diff-block pre,
+  .diff-block code {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: inherit;
+    display: inline;
+  }
+  .diff-block {
+    margin-top: 6px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    background: #0a0d11;
+    overflow: hidden;
+  }
+  .diff-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border-soft);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .diff-header .diff-kind {
+    color: var(--accent, #58a6ff);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .diff-header .diff-path {
+    flex: 1;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .diff-header .diff-stats { display: flex; gap: 6px; }
+  .diff-stat { font-weight: 700; }
+  .diff-stat.add { color: #3fb950; }
+  .diff-stat.del { color: #f85149; }
+
+  .diff-body {
+    max-height: 420px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 6px 0;
+  }
+  .diff-line {
+    display: flex;
+    padding: 0 10px;
+    white-space: pre;
+  }
+  .diff-line .diff-marker {
+    flex: 0 0 16px;
+    color: var(--text-dimer);
+    user-select: none;
+  }
+  .diff-line .diff-text {
+    flex: 1;
+    color: var(--text);
+    white-space: pre;
+    overflow-wrap: normal;
+  }
+  .diff-line.add {
+    background: rgba(46, 160, 67, 0.12);
+  }
+  .diff-line.add .diff-marker { color: #3fb950; }
+  .diff-line.add .diff-text { color: #aff0bd; }
+  .diff-line.del {
+    background: rgba(248, 81, 73, 0.12);
+  }
+  .diff-line.del .diff-marker { color: #f85149; }
+  .diff-line.del .diff-text { color: #ffb4af; }
+  .diff-line.ctx .diff-text { color: var(--text-dim); }
+
+  /* ---- Sub-agent delegation (recursive) ---- */
+  .sub-agent {
+    margin: 10px 0;
+    border-left: 3px solid var(--depth-1);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    background: var(--bg-elev);
+  }
+  .sub-agent.depth-2 { border-left-color: var(--depth-2); }
+  .sub-agent.depth-3 { border-left-color: var(--depth-3); }
+  .sub-agent.depth-4 { border-left-color: var(--depth-4); }
+  .sub-agent > .sa-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    user-select: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .sub-agent.collapsed > .sa-head { border-bottom: none; }
+  .sub-agent > .sa-head:hover { background: var(--panel); }
+  .sub-agent .sa-caret {
+    width: 12px;
+    text-align: center;
+    color: var(--text-dimer);
+    transition: transform 0.15s;
+  }
+  .sub-agent.expanded > .sa-head .sa-caret { transform: rotate(90deg); }
+  .sub-agent .sa-role { font-weight: 600; color: var(--depth-1); }
+  .sub-agent.depth-2 .sa-role { color: var(--depth-2); }
+  .sub-agent.depth-3 .sa-role { color: var(--depth-3); }
+  .sub-agent.depth-4 .sa-role { color: var(--depth-4); }
+  .sub-agent .sa-purpose {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .sub-agent .sa-summary {
+    color: var(--text-dimer);
+    font-size: 10px;
+  }
+  .sub-agent .sa-state {
+    font-size: 10px;
+    text-transform: uppercase;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-dimer);
+  }
+  .sub-agent .sa-state.active { color: var(--warning); border-color: rgba(210, 153, 34, 0.45); }
+  .sub-agent .sa-state.resolved { color: var(--success); border-color: rgba(63, 185, 80, 0.4); }
+  .sub-agent .sa-state.error { color: var(--error); border-color: rgba(248, 81, 73, 0.4); }
+
+  /* Returned-text preview: "what did this sub-agent hand back to its
+     parent?" — click to open the full message drawer. */
+  .sub-agent .sa-returned {
+    display: none;
+    padding: 6px 12px 8px 22px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sub-agent .sa-returned:hover { background: var(--panel); color: var(--text); }
+  .sub-agent .sa-returned:not(:empty) { display: block; }
+  .sub-agent.collapsed > .sa-returned { border-bottom: none; }
+
+  .sub-agent .sa-body {
+    display: none;
+    padding: 8px 14px 12px 16px;
+  }
+  .sub-agent.expanded > .sa-body { display: block; }
+
+  /* ---- Todos panel (TodoWrite output) ---- */
+  .todos-panel {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--warning);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .todos-panel.all-done { border-left-color: var(--success); }
+  .todos-panel .todos-hdr {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .todos-panel .todos-hdr .label { color: var(--text); font-weight: 600; }
+  .todos-panel .todos-hdr .count { color: var(--text-dimer); }
+  .todos-panel .todo-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+    color: var(--text);
+  }
+  .todos-panel .todo-row .mark {
+    flex: 0 0 14px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .todos-panel .todo-row.pending .mark { color: var(--text-dimer); }
+  .todos-panel .todo-row.in_progress .mark {
+    color: var(--warning);
+    animation: pulseBorder 1.4s ease-in-out infinite;
+  }
+  .todos-panel .todo-row.completed .mark { color: var(--success); }
+  .todos-panel .todo-row .text {
+    flex: 1;
+    word-break: break-word;
+  }
+  .todos-panel .todo-row.pending .text { color: var(--text-dim); }
+  .todos-panel .todo-row.in_progress .text { color: var(--text); font-weight: 500; }
+  .todos-panel .todo-row.completed .text {
+    color: var(--text-dimer);
+    text-decoration: line-through;
+  }
+
+  /* ---- Received (bundled tool_result arrival) ---- */
+  .received {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    background: rgba(88, 166, 255, 0.06);
+    border: 1px solid rgba(88, 166, 255, 0.22);
+    border-left: 3px solid var(--accent);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text);
+    transition: background 0.15s;
+  }
+  .received:hover { background: rgba(88, 166, 255, 0.10); }
+  .received .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .received .icon { color: var(--accent); font-size: 13px; flex: 0 0 auto; }
+  .received .label { color: var(--text); font-weight: 600; flex: 0 0 auto; }
+  .received .head-summary {
+    color: var(--text-dim);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .received .results {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .received .results:empty { display: none; }
+  .received .res-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--text-dim);
+    font-size: 11px;
+    overflow: hidden;
+  }
+  .received .res-marker { color: var(--success); flex: 0 0 auto; }
+  .received .res-row.error .res-marker { color: var(--error); }
+  .received .res-id {
+    color: var(--text-dimer);
+    flex: 0 0 auto;
+    font-size: 10px;
+  }
+  .received .res-preview {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .received .res-row.error .res-preview { color: var(--error); }
+
+  /* ---- Error banner ---- */
+  .error-banner {
+    margin: 10px 0;
+    padding: 10px 14px;
+    background: rgba(248, 81, 73, 0.07);
+    border-left: 3px solid var(--error);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--error);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* ---- Input bar ---- */
+  #bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 20px 12px;
+    background: rgba(10, 14, 20, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+    z-index: 40;
+  }
+  #bar .inner {
+    max-width: 980px;
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  #bar .hint {
+    color: var(--text-dimer);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    align-self: center;
+    margin-right: 4px;
+  }
+  #bar textarea {
+    flex: 1;
+    min-height: 38px;
+    max-height: 140px;
+    padding: 9px 12px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.45;
+    resize: none;
+    outline: none;
+  }
+  #bar textarea:focus { border-color: var(--accent); }
+  #bar button {
+    height: 38px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  #bar .send {
+    background: var(--accent);
+    color: #0a0e14;
+    padding: 0 18px;
+    min-width: 60px;
+  }
+  #bar .send:disabled { background: var(--border); color: var(--text-dimer); cursor: not-allowed; }
+  #bar .stop {
+    background: transparent;
+    color: var(--error);
+    border-color: rgba(248, 81, 73, 0.5);
+    width: 40px;
+    font-size: 16px;
+    padding: 0;
+  }
+  #bar .stop:disabled { opacity: 0.30; cursor: not-allowed; }
+  #bar .stop:not(:disabled):hover { background: rgba(248, 81, 73, 0.1); }
+
+  /* ---- Session picker ---- */
+  #picker-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 60;
+  }
+  #picker-overlay.open { display: block; }
+  #picker-panel {
+    display: none;
+    position: fixed;
+    top: 54px;
+    right: 20px;
+    width: 540px;
+    max-height: calc(100vh - 80px);
+    background: #0f141c;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    z-index: 70;
+    overflow: hidden;
+    flex-direction: column;
+  }
+  #picker-panel.open { display: flex; }
+  #picker-hdr {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+  #picker-hdr .t { flex: 1; font-weight: 600; }
+  #picker-hdr .close { cursor: pointer; color: var(--text-dim); padding: 0 6px; }
+  #picker-hdr .close:hover { color: var(--text); }
+  #picker-body { overflow-y: auto; flex: 1; }
+  .picker-sec {
+    padding: 8px 14px 4px;
+    color: var(--text-dimer);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(0, 0, 0, 0.25);
+    font-family: var(--font-mono);
+  }
+  .picker-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 14px 92px 1fr;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 12px;
+  }
+  .picker-item:hover { background: rgba(255, 255, 255, 0.04); }
+  .picker-item.current { background: rgba(88, 166, 255, 0.08); }
+  .picker-item .mk { color: var(--success); }
+  .picker-item.arch .mk { color: var(--text-dimer); }
+  .picker-item .sid {
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .picker-item .prev {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .picker-item .fork-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    background: rgba(88, 166, 255, 0.15);
+    color: var(--accent, #58a6ff);
+    cursor: pointer;
+  }
+  .picker-item .fork-badge:hover {
+    background: rgba(88, 166, 255, 0.28);
+  }
+  .picker-item .meta-line {
+    color: var(--text-dimer);
+    font-size: 10px;
+    grid-column: 2 / 4;
+    font-family: var(--font-mono);
+  }
+  .picker-empty {
+    padding: 14px;
+    color: var(--text-dimer);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* ---- Settings modal ---- */
+  #cfg-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 85;
+  }
+  #cfg-overlay.open { display: block; }
+  #cfg-panel {
+    display: none;
+    position: fixed;
+    top: 54px;
+    right: 20px;
+    width: min(780px, 94vw);
+    max-height: calc(100vh - 80px);
+    background: #0f141c;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+    z-index: 95;
+    overflow: hidden;
+    flex-direction: column;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  #cfg-panel.open { display: flex; }
+  #cfg-hdr {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+  }
+  #cfg-hdr .t { flex: 1; font-weight: 600; }
+  #cfg-hdr .close { cursor: pointer; padding: 0 6px; }
+  #cfg-body { overflow-y: auto; flex: 1; padding: 12px 14px 8px; }
+  #cfg-foot {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .cfg-btn {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .cfg-btn:hover { border-color: var(--accent); }
+  .cfg-btn.primary { background: rgba(88, 166, 255, 0.2); border-color: var(--accent); color: var(--accent); }
+  .cfg-btn.primary:hover { background: rgba(88, 166, 255, 0.35); }
+  .cfg-btn.danger { color: #f85149; }
+  .cfg-btn.danger:hover { border-color: #f85149; }
+  .cfg-section {
+    margin-bottom: 18px;
+  }
+  .cfg-section-title {
+    color: var(--text-dimer);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .cfg-provider {
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: 5px;
+    padding: 8px 12px;
+    color: var(--text-dim);
+    font-size: 11.5px;
+  }
+  .cfg-agent {
+    border: 1px solid var(--border-soft);
+    border-radius: 5px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+  }
+  .cfg-agent-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .cfg-agent-name {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 13px;
+  }
+  .cfg-agent-desc {
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cfg-agent-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 10px;
+    margin-bottom: 6px;
+    align-items: start;
+  }
+  .cfg-agent-row > label {
+    color: var(--text-dim);
+    font-size: 11px;
+    padding-top: 6px;
+  }
+  .cfg-agent-row select,
+  .cfg-agent-row input[type="text"],
+  .cfg-agent-row textarea {
+    background: #0a0d11;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    width: 100%;
+  }
+  .cfg-agent-row textarea {
+    min-height: 80px;
+    max-height: 280px;
+    resize: vertical;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .cfg-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 4px 0;
+  }
+  .cfg-tools label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: #0a0d11;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text);
+  }
+  .cfg-tools input[type="checkbox"] { margin: 0; }
+  .cfg-tools label.all {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .cfg-instr-toggle {
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 11px;
+    padding-top: 6px;
+  }
+  .cfg-instr-toggle:hover { color: var(--text); }
+  .cfg-preset-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .cfg-preset-row:last-child { border-bottom: none; }
+  .cfg-preset-name {
+    color: var(--text);
+    font-family: var(--font-mono);
+  }
+  .cfg-preset-save {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .cfg-preset-save input {
+    flex: 1;
+    background: #0a0d11;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .cfg-msg {
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 11.5px;
+  }
+  .cfg-msg.error { background: rgba(248, 81, 73, 0.1); color: #f85149; }
+  .cfg-msg.ok { background: rgba(46, 160, 67, 0.12); color: #3fb950; }
+
+  /* ---- Drill-down drawer ---- */
+  #drawer-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 80;
+  }
+  #drawer-overlay.open { display: block; }
+  #drawer {
+    display: none;
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(560px, 90vw);
+    background: #0d1117;
+    border-left: 1px solid var(--border);
+    z-index: 90;
+    flex-direction: column;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.45);
+    transform: translateX(100%);
+    transition: transform 0.22s ease-out;
+  }
+  #drawer.open { display: flex; transform: translateX(0); }
+  #drawer-hdr {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  #drawer-hdr .t {
+    flex: 1;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+  }
+  #drawer-hdr button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  #drawer-hdr button:hover { color: var(--text); }
+  #drawer-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 14px 16px 24px;
+  }
+  .drawer-sec {
+    margin-top: 16px;
+    margin-bottom: 4px;
+    color: var(--text-dimer);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: var(--font-mono);
+  }
+  .drawer-sec:first-child { margin-top: 0; }
+  .drawer-kv {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .drawer-kv .k { color: var(--text-dimer); min-width: 100px; flex: 0 0 auto; }
+  .drawer-kv .v { color: var(--text); word-break: break-word; flex: 1; }
+  .drawer-pre {
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 360px;
+    overflow-y: auto;
+    position: relative;
+  }
+  /* Kind-specific styling — colored border + auto label so the reader
+     can tell at a glance whether a block is plain text, a tool_use
+     input payload, a tool_result, usage metadata, or a thinking block.
+     The label is rendered via ::before so we don't have to touch the
+     existing markup. */
+  .drawer-pre[data-kind]::before {
+    content: attr(data-kind);
+    display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text-dimer);
+  }
+  .drawer-pre[data-kind="text"] {
+    border-color: var(--border);
+  }
+  .drawer-pre[data-kind="text"]::before { color: var(--text-dim); }
+
+  .drawer-pre[data-kind="tool_use"] {
+    background: rgba(210, 153, 34, 0.05);
+    border-color: rgba(210, 153, 34, 0.32);
+  }
+  .drawer-pre[data-kind="tool_use"]::before {
+    color: var(--warning);
+    border-bottom-color: rgba(210, 153, 34, 0.25);
+  }
+
+  .drawer-pre[data-kind="tool_result"] {
+    background: rgba(63, 185, 80, 0.05);
+    border-color: rgba(63, 185, 80, 0.32);
+  }
+  .drawer-pre[data-kind="tool_result"]::before {
+    color: var(--success);
+    border-bottom-color: rgba(63, 185, 80, 0.25);
+  }
+
+  .drawer-pre[data-kind="usage"] {
+    background: rgba(125, 133, 144, 0.04);
+    border-color: rgba(125, 133, 144, 0.30);
+  }
+  .drawer-pre[data-kind="usage"]::before {
+    color: var(--text-dim);
+  }
+
+  .drawer-pre[data-kind="thinking"] {
+    background: rgba(188, 140, 255, 0.05);
+    border-color: rgba(188, 140, 255, 0.32);
+  }
+  .drawer-pre[data-kind="thinking"]::before {
+    color: var(--purple);
+    border-bottom-color: rgba(188, 140, 255, 0.25);
+  }
+  .drawer-hint {
+    color: var(--text-dimer);
+    font-size: 12px;
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  /* ---- Animations ---- */
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .turn, .tool, .msg, .sub-agent, .error-banner {
+    animation: slide-in 0.18s ease-out;
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="bullet">●</span>
+      <span class="name">nature</span>
+    </div>
+    <button class="hdr-btn" onclick="_togglePicker()">☰ sessions</button>
+    <button class="hdr-btn" onclick="_newSession()">＋ new</button>
+    <div class="meta" id="meta">connecting…</div>
+    <div class="status" id="status">connecting</div>
+  </header>
+
+  <div id="pulse-bar">
+    <span class="spin">⠋</span>
+    <span class="activity">thinking</span>
+    <span class="meta">0.0s</span>
+  </div>
+
+  <main id="stream">
+    <div class="empty" id="empty">
+      <div class="big">no session</div>
+      <div class="hint">type below to start, or pick one from ☰</div>
+    </div>
+  </main>
+
+  <div id="bar">
+    <div class="inner">
+      <span class="hint">⏎ send · ⇧⏎ newline</span>
+      <textarea id="input" rows="1" placeholder="type a message — creates a new session if none is selected"></textarea>
+      <button class="stop" id="btn-stop" onclick="_stopRun()" disabled title="stop (Ctrl+C equivalent)">⏹</button>
+      <button class="send" id="btn-send" onclick="_sendInput()">send</button>
+    </div>
+  </div>
+
+  <div id="picker-overlay" onclick="_hidePicker()"></div>
+  <div id="picker-panel">
+    <div id="picker-hdr">
+      <span class="t">sessions</span>
+      <span class="close" onclick="_hidePicker()">✕</span>
+    </div>
+    <div id="picker-body"><div class="picker-empty">loading…</div></div>
+  </div>
+
+  <div id="drawer-overlay" onclick="_closeDrawer()"></div>
+  <div id="drawer">
+    <div id="drawer-hdr">
+      <span class="t" id="drawer-title">details</span>
+      <button onclick="_closeDrawer()" aria-label="close">✕</button>
+    </div>
+    <div id="drawer-body"></div>
+  </div>
+
+<script>
+const WS_PORT = __WS_PORT__;
+
+let currentSid = null;
+let ws = null;
+let wsRetryTimer = null;
+let lastView = null;
+
+// UI-only state: which turns / sub-agents the user has expanded.
+// Keyed on turn.id / sub_agent.frame_id. Anything the user has
+// manually toggled is tracked in the `userTouched*` sets so the
+// auto-expand-running-turn default doesn't fight their intent.
+const expandedTurns = new Set();
+const expandedSubAgents = new Set();
+const userTouchedTurns = new Set();
+const userTouchedSubAgents = new Set();
+
+// Drawer source map — keeps track of what entity the drawer is showing
+// so refresh() can re-open it with the latest DTO data.
+let drawerSource = null; // {kind: "message"|"tool"|"sub_agent", id: string}
+
+// Pulse tick state (pulled from view.pulse; tick interval updates elapsed)
+let pulseStartedAt = null;
+let pulseTickTimer = null;
+
+const PULSE_FRAMES = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"];
+let pulseSpinIdx = 0;
+
+// ---- DOM refs ----
+const streamEl = document.getElementById("stream");
+const metaEl = document.getElementById("meta");
+const statusEl = document.getElementById("status");
+const pulseBar = document.getElementById("pulse-bar");
+const pulseSpinEl = pulseBar.querySelector(".spin");
+const pulseActivityEl = pulseBar.querySelector(".activity");
+const pulseMetaEl = pulseBar.querySelector(".meta");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("btn-send");
+const stopBtn = document.getElementById("btn-stop");
+
+// ---- Utilities ----
+function esc(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+// ---- Minimal Markdown renderer ----
+// Self-contained, no external deps. Covers the subset the LLM
+// actually emits in practice: fenced code blocks, headers, lists,
+// inline code, bold/italic, links, blockquotes. Everything else
+// falls through as escaped text, so XSS is impossible — raw
+// input is escaped BEFORE any markdown transforms run, and the
+// transforms only produce a fixed set of tags whose content came
+// from escaped source.
+function renderMarkdown(text) {
+  if (!text) return "";
+
+  // 1. Extract fenced code blocks first so their content isn't
+  // touched by the line-level and inline transforms below. Each
+  // block is replaced by a placeholder token that survives
+  // escaping untouched and is swapped back in at the end.
+  const codeBlocks = [];
+  text = String(text).replace(
+    /```([\w+-]*)\n([\s\S]*?)```/g,
+    (_, lang, code) => {
+      codeBlocks.push({lang, code});
+      return "\u0000MDCODE" + (codeBlocks.length - 1) + "\u0000";
+    },
+  );
+
+  // 2. Escape HTML on everything else.
+  text = esc(text);
+
+  // 3. Line-level blocks: tables, headers, lists, blockquotes, paragraphs.
+  const lines = text.split("\n");
+  const out = [];
+  let inList = null; // null | 'ul' | 'ol'
+  const closeList = () => {
+    if (inList) { out.push("</" + inList + ">"); inList = null; }
+  };
+
+  // ---- Table helpers (GFM-style) ----
+  // A GFM table is a header row + a `|---|---|` separator row +
+  // zero or more body rows. Leading `|` on each row is required for
+  // our detector to keep false positives low (pipes in code samples
+  // or prose won't look like tables). Alignment markers on the
+  // separator (`:---`, `---:`, `:---:`) set per-column text-align.
+  const splitCells = (row) => {
+    // Strip leading/trailing pipe + whitespace so both `|a|b|` and
+    // `|a|b` shapes work, then respect `\|` as a literal pipe.
+    const SENTINEL = "\u0001";
+    let r = row.replace(/^\s*\|/, "").replace(/\|\s*$/, "");
+    r = r.replace(/\\\|/g, SENTINEL);
+    return r.split("|").map(c => c.replace(new RegExp(SENTINEL, "g"), "|").trim());
+  };
+  const isTableRow = (line) => /^\s*\|/.test(line);
+  const isTableSeparator = (line) => {
+    if (!isTableRow(line)) return false;
+    const cells = splitCells(line);
+    return cells.length > 0 && cells.every(c => /^:?-{2,}:?$/.test(c));
+  };
+  const parseAlignments = (separator) => splitCells(separator).map(c => {
+    const l = c.startsWith(":");
+    const r = c.endsWith(":");
+    if (l && r) return "center";
+    if (r) return "right";
+    if (l) return "left";
+    return "";
+  });
+  const buildTableHtml = (header, aligns, rows) => {
+    const styleFor = (k) => aligns[k] ? ' style="text-align:' + aligns[k] + '"' : "";
+    let h = '<table class="md-table"><thead><tr>';
+    header.forEach((c, k) => { h += "<th" + styleFor(k) + ">" + c + "</th>"; });
+    h += "</tr></thead><tbody>";
+    rows.forEach(row => {
+      h += "<tr>";
+      // Pad/truncate to header width so short rows don't break layout.
+      for (let k = 0; k < header.length; k++) {
+        const cell = row[k] != null ? row[k] : "";
+        h += "<td" + styleFor(k) + ">" + cell + "</td>";
+      }
+      h += "</tr>";
+    });
+    h += "</tbody></table>";
+    return h;
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table: header + separator + zero-or-more body rows.
+    if (i + 1 < lines.length && isTableRow(line) && isTableSeparator(lines[i + 1])) {
+      closeList();
+      const header = splitCells(line);
+      const aligns = parseAlignments(lines[i + 1]);
+      let j = i + 2;
+      const rows = [];
+      while (j < lines.length && isTableRow(lines[j])) {
+        rows.push(splitCells(lines[j]));
+        j++;
+      }
+      out.push(buildTableHtml(header, aligns, rows));
+      i = j;
+      continue;
+    }
+
+    // Header (# to ######)
+    const hdr = line.match(/^(#{1,6})\s+(.*)$/);
+    if (hdr) {
+      closeList();
+      const level = hdr[1].length;
+      out.push("<h" + level + ">" + hdr[2] + "</h" + level + ">");
+      i++;
+      continue;
+    }
+
+    // Unordered list item. `-` and `*` only — GFM technically accepts
+    // `+` as a bullet too but we exclude it here because `+ code` /
+    // `- code` prose lines show up in diff dumps from the LLM and get
+    // mangled into garbage bullet lists that hide the +/- semantics.
+    // Real diffs should use a ```diff fence (handled below) or the
+    // Edit tool's native diff view.
+    const uli = line.match(/^\s*[-*]\s+(.*)$/);
+    if (uli) {
+      if (inList !== "ul") { closeList(); out.push("<ul>"); inList = "ul"; }
+      out.push("<li>" + uli[1] + "</li>");
+      i++;
+      continue;
+    }
+
+    // Ordered list item
+    const oli = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (oli) {
+      if (inList !== "ol") { closeList(); out.push("<ol>"); inList = "ol"; }
+      out.push("<li>" + oli[1] + "</li>");
+      i++;
+      continue;
+    }
+
+    // Blockquote
+    const bq = line.match(/^&gt;\s?(.*)$/);
+    if (bq) {
+      closeList();
+      out.push("<blockquote>" + bq[1] + "</blockquote>");
+      i++;
+      continue;
+    }
+
+    // Blank line
+    if (!line.trim()) {
+      closeList();
+      out.push("");
+      i++;
+      continue;
+    }
+
+    // Ordinary line — keep as-is, will be joined into paragraphs below.
+    closeList();
+    out.push(line);
+    i++;
+  }
+  closeList();
+
+  // 4. Group consecutive plain lines into <p> paragraphs. Lines
+  // that already start with a block tag are passed through.
+  let html = "";
+  let para = [];
+  const flushPara = () => {
+    if (para.length) {
+      html += "<p>" + para.join("<br>") + "</p>\n";
+      para = [];
+    }
+  };
+  for (const line of out) {
+    if (!line) { flushPara(); continue; }
+    // A placeholder like `\u0000MDCODE3\u0000` is a future block
+    // element (either pre.md-code or div.md-diff) — don't wrap it in
+    // a paragraph or the browser auto-closes the <p> around it and
+    // leaves a stray empty node.
+    if (/^<(h\d|ul|ol|li|blockquote|pre|table)/.test(line) || /^\u0000MDCODE\d+\u0000$/.test(line)) {
+      flushPara();
+      html += line + "\n";
+      continue;
+    }
+    para.push(line);
+  }
+  flushPara();
+
+  // 5. Inline transforms: inline code (backticks), bold, italic,
+  // links. Applied to the assembled HTML string so they run inside
+  // <p>, <li>, etc. Links swap the whole [text](url) token, not
+  // just pieces, and the URL is passed through esc() again to
+  // neutralize any `javascript:` sneaking through.
+  // Order matters: inline code first so its content isn't touched
+  // by bold/italic; bold before italic so ** doesn't degrade to *.
+  html = html.replace(
+    /`([^`\n]+)`/g,
+    (_, c) => "<code>" + c + "</code>",
+  );
+  html = html.replace(
+    /\*\*([^*\n]+)\*\*/g,
+    (_, c) => "<strong>" + c + "</strong>",
+  );
+  html = html.replace(
+    /(?<![*\w])\*([^*\n]+)\*(?![*\w])/g,
+    (_, c) => "<em>" + c + "</em>",
+  );
+  html = html.replace(
+    /\[([^\]\n]+)\]\(([^)\n]+)\)/g,
+    (_, label, url) => {
+      // Strip javascript:, data:, vbscript: schemes.
+      const safe = /^https?:|^mailto:|^#|^\//i.test(url) ? url : "#";
+      return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + label + "</a>";
+    },
+  );
+
+  // 6. Re-inject fenced code blocks. The code content gets its own
+  // escape pass (it skipped step 2). The `data-lang` attribute is
+  // informational; the dashboard doesn't actually syntax-highlight
+  // but the hint is preserved for potential future use.
+  html = html.replace(
+    /\u0000MDCODE(\d+)\u0000/g,
+    (_, idx) => {
+      const {lang, code} = codeBlocks[parseInt(idx, 10)];
+      // ```diff blocks get the same +/- coloring the real Edit-tool
+      // diff-block uses, so a prose diff in an assistant message
+      // reads the same as a tool-level diff and doesn't clash with
+      // the surrounding markdown flow.
+      if ((lang || "").toLowerCase() === "diff") {
+        const lines = code.split("\n");
+        // Trailing newline from the fence; drop the empty tail so
+        // the block doesn't end with an extra blank row.
+        if (lines.length && lines[lines.length - 1] === "") lines.pop();
+        const body = lines.map((raw) => {
+          const ch = raw.charAt(0);
+          const kind = ch === "+" ? "add" : ch === "-" ? "del" : "ctx";
+          const marker = ch === "+" || ch === "-" ? ch : " ";
+          const text = ch === "+" || ch === "-" ? raw.slice(1) : raw;
+          return (
+            '<div class="diff-line ' + kind + '">' +
+              '<span class="diff-marker">' + marker + "</span>" +
+              '<span class="diff-text">' + esc(text) + "</span>" +
+            "</div>"
+          );
+        }).join("");
+        return '<div class="md-diff"><div class="diff-body">' + body + "</div></div>";
+      }
+      const langAttr = lang ? ' data-lang="' + esc(lang) + '"' : "";
+      return '<pre class="md-code"' + langAttr + '><code>' + esc(code) + "</code></pre>";
+    },
+  );
+
+  return html;
+}
+function fmtDur(ms) {
+  if (ms == null) return "";
+  if (ms < 1000) return ms + "ms";
+  return (ms / 1000).toFixed(1) + "s";
+}
+function fmtTokens(n) {
+  if (n < 1000) return String(n);
+  if (n < 10000) return (n / 1000).toFixed(1) + "k";
+  return Math.floor(n / 1000) + "k";
+}
+function fmtElapsed(seconds) {
+  if (seconds < 60) return seconds.toFixed(1) + "s";
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return m + "m " + (s < 10 ? "0" + s : s) + "s";
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h + "h " + (m < 10 ? "0" + m : m) + "m";
+}
+function formatArgs(obj) {
+  if (!obj || typeof obj !== "object") return "";
+  const parts = [];
+  for (const [k, v] of Object.entries(obj)) {
+    let val = typeof v === "string" ? v : JSON.stringify(v);
+    if (val && val.length > 60) val = val.slice(0, 57) + "…";
+    parts.push(k + ": " + val);
+  }
+  return parts.join(", ");
+}
+function outputFirstLine(s) {
+  if (!s) return "";
+  const line = String(s).split("\n").find((l) => l.trim() !== "") || "";
+  return line.length > 120 ? line.slice(0, 117) + "…" : line;
+}
+
+// ---- Pulse ----
+function applyPulse(pulse) {
+  if (pulse && pulse.active) {
+    pulseBar.classList.add("active");
+    pulseActivityEl.textContent = pulse.activity || "thinking";
+    pulseStartedAt = pulse.started_at || (Date.now() / 1000);
+    tickPulseMeta(pulse);
+    if (!pulseTickTimer) {
+      pulseTickTimer = setInterval(() => tickPulseMeta(lastView && lastView.pulse), 150);
+    }
+    stopBtn.disabled = !currentSid;
+  } else {
+    pulseBar.classList.remove("active");
+    pulseActivityEl.textContent = "thinking";
+    pulseMetaEl.textContent = "";
+    if (pulseTickTimer) { clearInterval(pulseTickTimer); pulseTickTimer = null; }
+    pulseStartedAt = null;
+    stopBtn.disabled = true;
+  }
+}
+
+function tickPulseMeta(pulse) {
+  if (!pulse || !pulse.active) return;
+  pulseSpinIdx = (pulseSpinIdx + 1) % PULSE_FRAMES.length;
+  pulseSpinEl.textContent = PULSE_FRAMES[pulseSpinIdx];
+  const now = Date.now() / 1000;
+  const elapsed = pulseStartedAt ? (now - pulseStartedAt) : 0;
+  const bits = [fmtElapsed(Math.max(0, elapsed))];
+  const tokBits = [];
+  if (pulse.input_tokens) tokBits.push("↓ " + fmtTokens(pulse.input_tokens));
+  if (pulse.output_tokens) tokBits.push("↑ " + fmtTokens(pulse.output_tokens));
+  if (tokBits.length) bits.push(tokBits.join(" · "));
+  pulseMetaEl.textContent = "(" + bits.join(" · ") + ")";
+}
+
+// ---- Render entry point (full idempotent render from DTO) ----
+function render(view) {
+  lastView = view;
+
+  // Header / meta
+  const name = view.role_name || "session";
+  const model = view.model || "";
+  metaEl.textContent = view.session_id.slice(0, 8) + " · " + name + (model ? " · " + model : "");
+
+  // Pulse
+  applyPulse(view.pulse);
+
+  // Empty state
+  if (!view.turns || view.turns.length === 0) {
+    showEmpty("no activity yet", "type below to start");
+    return;
+  }
+  removeEmpty();
+
+  // Root todos panel — sticky section above turns. Driven by
+  // view.root_todos which the backend derives from TODO_WRITTEN events
+  // on the root frame.
+  _ensureRootTodosPanel(view.root_todos || []);
+
+  // Keyed turn reconciliation
+  const existing = new Map();
+  streamEl.querySelectorAll(":scope > .turn").forEach((el) => {
+    existing.set(el.dataset.turnId, el);
+  });
+
+  const wanted = new Set();
+  let prev = streamEl.querySelector(":scope > .todos-panel.root");
+  for (const turn of view.turns) {
+    wanted.add(turn.id);
+    let el = existing.get(turn.id);
+    if (!el) {
+      el = createTurnEl(turn);
+      if (prev) prev.after(el);
+      else streamEl.prepend(el);
+    } else {
+      updateTurnEl(el, turn);
+    }
+    prev = el;
+  }
+
+  for (const [id, el] of existing) {
+    if (!wanted.has(id)) el.remove();
+  }
+
+  // Refresh drawer if it's open (new data may have landed)
+  if (drawerSource) _refreshDrawer();
+}
+
+function _ensureRootTodosPanel(todos) {
+  // Find or create the root todos panel at the top of #stream.
+  // Reconciled in place — keyed on a single fixed slot.
+  let panel = streamEl.querySelector(":scope > .todos-panel.root");
+  if (!todos || todos.length === 0) {
+    if (panel) panel.remove();
+    return;
+  }
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "todos-panel root";
+    streamEl.prepend(panel);
+  }
+  _renderTodosPanel(panel, todos);
+}
+
+function _renderTodosPanel(panel, todos) {
+  const total = todos.length;
+  const done = todos.filter((t) => t.status === "completed").length;
+  const inProgress = todos.filter((t) => t.status === "in_progress").length;
+  const allDone = total > 0 && done === total;
+  panel.classList.toggle("all-done", allDone);
+
+  let html = '<div class="todos-hdr">' +
+    '<span class="label">todos</span>' +
+    '<span class="count">' + done + " / " + total + " completed" +
+    (inProgress ? " · " + inProgress + " in progress" : "") + "</span>" +
+    "</div>";
+  for (const t of todos) {
+    const status = t.status || "pending";
+    // Pending & completed show the imperative form; in_progress shows
+    // the activeForm ("Running tests" vs "Run tests") — that's the
+    // whole point of dual-form todos.
+    const text = status === "in_progress" ? (t.activeForm || t.content) : (t.content || "");
+    const mark = status === "completed" ? "✓" : (status === "in_progress" ? "⚙" : "○");
+    html +=
+      '<div class="todo-row ' + esc(status) + '">' +
+      '<span class="mark">' + esc(mark) + "</span>" +
+      '<span class="text">' + esc(text) + "</span>" +
+      "</div>";
+  }
+  panel.innerHTML = html;
+}
+
+function showEmpty(big, hint) {
+  streamEl.innerHTML =
+    '<div class="empty" id="empty"><div class="big">' + esc(big) +
+    '</div><div class="hint">' + esc(hint || "") + "</div></div>";
+}
+function removeEmpty() {
+  const e = document.getElementById("empty");
+  if (e) e.remove();
+}
+
+// ---- Fork action (called from turn-bar fork button) ----
+async function forkSessionAtEvent(sid, eventId, btn) {
+  if (!sid || !eventId) return;
+  if (!confirm("Fork this session at event " + eventId + "?\n\n" +
+               "Events 1.." + eventId + " will be copied into a new session " +
+               "(original ids preserved). The new session opens immediately.")) {
+    return;
+  }
+  if (btn) btn.classList.add("pending");
+  try {
+    const res = await fetch("/api/sessions/" + encodeURIComponent(sid) + "/fork", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({at_event_id: eventId}),
+    });
+    if (!res.ok) {
+      let detail = "fork failed (" + res.status + ")";
+      try { const j = await res.json(); detail = j.detail || j.error || detail; } catch {}
+      throw new Error(detail);
+    }
+    const forked = await res.json();
+    if (forked && forked.session_id) {
+      connectTo(forked.session_id);
+    }
+  } catch (e) {
+    alert("Fork failed: " + (e.message || e));
+  } finally {
+    if (btn) btn.classList.remove("pending");
+  }
+}
+
+// ---- Turn element ----
+function createTurnEl(turn) {
+  const el = document.createElement("div");
+  el.className = "turn";
+  el.dataset.turnId = turn.id;
+
+  // User message (always visible)
+  const userEl = createMessageEl(turn.user_message, "user");
+  el.appendChild(userEl);
+
+  // Squashed-bar + collapsible steps
+  const bar = document.createElement("div");
+  bar.className = "turn-bar";
+  bar.innerHTML =
+    '<span class="caret">▸</span>' +
+    '<span class="bits"></span>' +
+    '<span class="fork-btn" title="Fork a new session at this turn\'s last event">⑂ fork</span>' +
+    '<span class="state-pill"></span>';
+  bar.addEventListener("click", () => {
+    userTouchedTurns.add(turn.id);
+    if (expandedTurns.has(turn.id)) expandedTurns.delete(turn.id);
+    else expandedTurns.add(turn.id);
+    el.classList.toggle("expanded");
+  });
+  // Fork button: stopPropagation so clicking it doesn't also toggle
+  // the turn expansion. The button reads the turn's last_event_id
+  // from the DOM dataset so a live-updated turn (new events still
+  // landing) forks at whatever id is currently set.
+  const forkBtn = bar.querySelector(".fork-btn");
+  if (forkBtn) {
+    forkBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const eid = parseInt(el.dataset.lastEventId || "0", 10);
+      if (eid > 0) forkSessionAtEvent(currentSid, eid, forkBtn);
+    });
+  }
+  el.appendChild(bar);
+
+  const stepsEl = document.createElement("div");
+  stepsEl.className = "turn-steps";
+  el.appendChild(stepsEl);
+
+  // Final message (promoted, always visible)
+  const finalEl = document.createElement("div");
+  finalEl.className = "final-slot";
+  el.appendChild(finalEl);
+
+  updateTurnEl(el, turn);
+  return el;
+}
+
+function updateTurnEl(el, turn) {
+  // User message — only needs in-place update if content changed (rare).
+  const userSlot = el.querySelector(":scope > .msg.user");
+  if (userSlot) updateMessageEl(userSlot, turn.user_message, "user");
+
+  // Keep the turn's last event id on the root element so the fork
+  // button handler reads the live value (turns that are still
+  // running get their last_event_id bumped on every DTO push).
+  if (turn.last_event_id) {
+    el.dataset.lastEventId = String(turn.last_event_id);
+  }
+  if (turn.first_event_id) {
+    el.dataset.firstEventId = String(turn.first_event_id);
+  }
+
+  // Bar: summary + state pill
+  const bar = el.querySelector(":scope > .turn-bar");
+  const bits = bar.querySelector(".bits");
+  const statePill = bar.querySelector(".state-pill");
+  bits.textContent = buildTurnBits(turn);
+  statePill.textContent = turn.state;
+  statePill.className = "state-pill " + turn.state;
+
+  // Default: turns render EXPANDED so the full git-tree structure
+  // (intermediate steps + tool calls + nested sub-agents) is visible
+  // on first render. The user can collapse for clarity, and that
+  // choice is remembered via userTouchedTurns.
+  if (!userTouchedTurns.has(turn.id)) {
+    expandedTurns.add(turn.id);
+  }
+  if (expandedTurns.has(turn.id)) el.classList.add("expanded");
+  else el.classList.remove("expanded");
+
+  // Reconcile steps
+  const stepsEl = el.querySelector(":scope > .turn-steps");
+  reconcileSteps(stepsEl, turn.steps || [], 1);
+
+  // Final message slot
+  const finalSlot = el.querySelector(":scope > .final-slot");
+  const existingFinal = finalSlot.querySelector(":scope > .msg");
+  if (turn.final_message) {
+    if (existingFinal) {
+      updateMessageEl(existingFinal, turn.final_message, "assistant");
+    } else {
+      finalSlot.appendChild(createMessageEl(turn.final_message, "assistant"));
+    }
+  } else if (existingFinal) {
+    existingFinal.remove();
+  }
+}
+
+function buildTurnBits(turn) {
+  const s = turn.summary || {};
+  const parts = [];
+  // "msg" = message steps only (tool/sub_agent/received counts are
+  // already their own buckets, so the generic step count would double).
+  const msgSteps = (s.step_count || 0)
+    - (s.tool_count || 0)
+    - (s.sub_agent_count || 0)
+    - (s.received_count || 0);
+  if (msgSteps > 0) parts.push(msgSteps + (msgSteps === 1 ? " msg" : " msgs"));
+  if (s.tool_count) parts.push(s.tool_count + (s.tool_count === 1 ? " tool" : " tools"));
+  if (s.sub_agent_count) parts.push(s.sub_agent_count + (s.sub_agent_count === 1 ? " sub-agent" : " sub-agents"));
+  if (!parts.length) parts.push("no activity yet");
+  if (s.duration_ms != null) parts.push(fmtDur(s.duration_ms));
+  if (turn.state === "running" && lastView && lastView.pulse && lastView.pulse.active) {
+    const a = lastView.pulse.activity;
+    if (a) parts.push(a);
+  }
+  return parts.join(" · ");
+}
+
+// ---- Reconcile step list inside a turn or sub-agent ----
+function reconcileSteps(container, steps, depth) {
+  const existing = new Map();
+  container.querySelectorAll(":scope > [data-step-id]").forEach((el) => {
+    existing.set(el.dataset.stepId, el);
+  });
+
+  // Filter: drop intermediate assistant messages that have no text.
+  // These are pure tool-dispatch events (content is just tool_use
+  // blocks) — the tool cards already represent them, so rendering
+  // them as empty bubbles is just noise. EXCEPTION: keep the empty
+  // bubble when the framework injected a footer nudge into the LLM
+  // request that produced it, since the nudge badge is the only way
+  // to see "the framework whispered right before this tool call".
+  const visibleSteps = (steps || []).filter((s) => {
+    if (s.kind === "message" && s.message && !(s.message.text || "").trim()) {
+      if ((s.message.injected_hints || []).length > 0) return true;
+      return false;
+    }
+    return true;
+  });
+
+  const wanted = new Set();
+  let prev = null;
+  for (const step of visibleSteps) {
+    wanted.add(step.id);
+    let el = existing.get(step.id);
+    if (!el) {
+      el = createStepEl(step, depth);
+      if (prev) prev.after(el);
+      else container.prepend(el);
+    } else {
+      updateStepEl(el, step, depth);
+    }
+    prev = el;
+  }
+  for (const [id, el] of existing) {
+    if (!wanted.has(id)) el.remove();
+  }
+}
+
+// ---- Step element ----
+function createStepEl(step, depth) {
+  if (step.kind === "message") {
+    const el = createMessageEl(step.message, "intermediate");
+    el.dataset.stepId = step.id;
+    return el;
+  }
+  if (step.kind === "tool") {
+    const el = createToolEl(step.tool);
+    el.dataset.stepId = step.id;
+    _applyParallelMarker(el, step);
+    return el;
+  }
+  if (step.kind === "sub_agent") {
+    const el = createSubAgentEl(step.sub_agent, depth);
+    el.dataset.stepId = step.id;
+    _applyParallelMarker(el, step);
+    return el;
+  }
+  if (step.kind === "received") {
+    const el = createReceivedEl(step.received);
+    el.dataset.stepId = step.id;
+    return el;
+  }
+  const el = document.createElement("div");
+  el.dataset.stepId = step.id;
+  return el;
+}
+
+function _applyParallelMarker(el, step) {
+  // Give tool and sub_agent steps that ran inside a parallel batch
+  // a visible marker — left border + group id on the dataset so
+  // the CSS rule `.parallel-batched` can style them and sibling
+  // CSS selectors can group contiguous runs.
+  if (step && step.parallel_group_id) {
+    el.classList.add("parallel-batched");
+    el.dataset.parallelGroupId = step.parallel_group_id;
+  } else {
+    el.classList.remove("parallel-batched");
+    delete el.dataset.parallelGroupId;
+  }
+}
+
+function _stepKindFromEl(el) {
+  // Figure out what kind of step the DOM element currently represents.
+  // sub-agent must be checked before tool, because a mis-updated zombie
+  // can carry both classes; the inner HTML template is the authoritative
+  // signal — if .sa-head isn't there, it's not really a sub-agent.
+  if (el.querySelector(":scope > .sa-head")) return "sub_agent";
+  if (el.classList.contains("received")) return "received";
+  if (el.classList.contains("tool")) return "tool";
+  if (el.classList.contains("msg")) return "message";
+  return null;
+}
+
+function updateStepEl(el, step, depth) {
+  // If the step was reclassified between DTO snapshots (e.g., a plain
+  // tool step just became a sub_agent because its child frame opened
+  // in a later event), the existing DOM element has the wrong shape.
+  // Rebuild it from scratch so the update doesn't produce a zombie.
+  if (_stepKindFromEl(el) !== step.kind) {
+    const fresh = createStepEl(step, depth);
+    el.replaceWith(fresh);
+    return;
+  }
+  if (step.kind === "message") {
+    updateMessageEl(el, step.message, "intermediate");
+  } else if (step.kind === "tool") {
+    updateToolEl(el, step.tool);
+    _applyParallelMarker(el, step);
+  } else if (step.kind === "sub_agent") {
+    updateSubAgentEl(el, step.sub_agent, depth);
+    _applyParallelMarker(el, step);
+  } else if (step.kind === "received") {
+    updateReceivedEl(el, step.received);
+  }
+}
+
+// ---- Message element ----
+function createMessageEl(msg, kind) {
+  const el = document.createElement("div");
+  el.className = "msg " + kind;
+  el.dataset.messageId = msg.message_id;
+  el.innerHTML =
+    '<div class="who"></div>' +
+    '<div class="body"></div>' +
+    '<div class="badges"></div>';
+  // Every message is clickable — the drawer is the drill-down for
+  // content blocks, annotations, and tool_use payloads regardless
+  // of sender (includes the user's own messages, since they may
+  // want to re-verify the raw payload they sent).
+  el.addEventListener("click", () => _openMessageDrawer(msg.message_id));
+  updateMessageEl(el, msg, kind);
+  return el;
+}
+
+function updateMessageEl(el, msg, kind) {
+  // Label: the incoming bubble on a root frame is literally the human
+  // user, so we show "you"; on a child frame the incoming bubble is a
+  // delegation prompt from the parent role, so we show the actual
+  // sender name. Either way, msg.from_ is the authoritative field.
+  const who = msg.from_ === "user" ? "you" : (msg.from_ || "assistant");
+  el.querySelector(":scope > .who").textContent = who;
+  // Render message text as Markdown (headers, lists, code blocks,
+  // bold/italic, links, blockquotes). The renderer escapes HTML
+  // before applying transforms so untrusted model output can't
+  // smuggle scripts or event handlers into the DOM.
+  el.querySelector(":scope > .body").innerHTML = renderMarkdown(msg.text || "");
+  // Badges row (synthesis, tokens, stop reason, duration)
+  const badgesEl = el.querySelector(":scope > .badges");
+  badgesEl.innerHTML = "";
+  // Synthesis badge: the LLM call that produced this message ingested
+  // one or more tool_results — flag so the user knows the text is a
+  // fresh LLM output, not a verbatim passthrough of any sub-agent
+  // bubble. This is the metadata that makes "did receptionist
+  // re-process or just forward?" answerable at a glance.
+  const regen = (msg.regenerated_from || []);
+  if (regen.length > 0) {
+    const b = document.createElement("span");
+    b.className = "badge synthesis";
+    b.textContent = "✨ synthesis · " + regen.length + " source" + (regen.length === 1 ? "" : "s");
+    b.title = "This message was produced by an LLM call that ingested " +
+      regen.length + " tool_result(s). Its text is a fresh synthesis, " +
+      "not a verbatim passthrough.";
+    badgesEl.appendChild(b);
+  }
+  // Nudge badge: the composer's footer rule pipeline injected one or
+  // more [FRAMEWORK NOTE] hints into the LLM request that produced
+  // this message. Shows which rules fired (synthesis_nudge,
+  // todo_continues_after_tool_result, todo_needs_in_progress, ...)
+  // so the user can see when the framework is actively steering the
+  // model between turns. Hover shows the full hint text.
+  const hints = (msg.injected_hints || []);
+  if (hints.length > 0) {
+    const b = document.createElement("span");
+    b.className = "badge nudge";
+    const shortNames = hints.map((h) => {
+      const s = h.source || "";
+      if (s === "synthesis_nudge") return "synth";
+      if (s === "todo_continues_after_tool_result") return "todo→";
+      if (s === "todo_needs_in_progress") return "todo⚙";
+      return s.replace(/_/g, " ");
+    });
+    b.textContent = "💡 nudged · " + shortNames.join(" + ");
+    b.title = hints.map((h) => "[" + (h.source || "?") + "]\n" + (h.text || "")).join("\n\n");
+    badgesEl.appendChild(b);
+  }
+  const a = msg.annotation;
+  if (a && kind !== "user") {
+    if (a.stop_reason) {
+      const b = document.createElement("span");
+      b.className = "badge stop";
+      b.textContent = "stop: " + a.stop_reason;
+      badgesEl.appendChild(b);
+    }
+    if (a.usage) {
+      const u = a.usage;
+      const inp = u.input_tokens || 0;
+      const out = u.output_tokens || 0;
+      const cache = u.cache_read_input_tokens || 0;
+      const parts = ["↓" + inp.toLocaleString(), "↑" + out.toLocaleString()];
+      if (cache) parts.push("◈" + cache.toLocaleString());
+      const b = document.createElement("span");
+      b.className = "badge tok";
+      b.textContent = parts.join(" ");
+      badgesEl.appendChild(b);
+    }
+    if (a.duration_ms != null) {
+      const b = document.createElement("span");
+      b.className = "badge";
+      b.textContent = fmtDur(a.duration_ms);
+      badgesEl.appendChild(b);
+    }
+  }
+}
+
+// ---- Tool element ----
+function createToolEl(tool) {
+  const el = document.createElement("div");
+  el.className = "tool";
+  el.dataset.toolUseId = tool.tool_use_id;
+  el.innerHTML =
+    '<div class="head">' +
+      '<span class="icon">⚙</span>' +
+      '<span class="name"></span>' +
+      '<span class="args-inline"></span>' +
+      '<span class="duration">…</span>' +
+    "</div>" +
+    '<div class="diff-slot"></div>' +
+    '<div class="result-inline"></div>';
+  el.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    _openToolDrawer(tool.tool_use_id);
+  });
+  updateToolEl(el, tool);
+  return el;
+}
+
+function updateToolEl(el, tool) {
+  const done = tool.completed_at != null;
+  const err = !!tool.is_error;
+  el.classList.toggle("running", !done);
+  el.classList.toggle("done", done && !err);
+  el.classList.toggle("err", done && err);
+
+  const icon = el.querySelector(".icon");
+  icon.textContent = done ? (err ? "✗" : "✓") : "⚙";
+
+  el.querySelector(".name").textContent = tool.tool_name || "?";
+
+  // Edit / Write / MultiEdit get the rich diff treatment; everything
+  // else keeps the compact inline args + result preview. The class
+  // toggle hides the compact result-inline row when the diff block
+  // is showing so the card doesn't double-render the same info.
+  const diffHtml = buildDiffHtmlForTool(tool);
+  el.classList.toggle("with-diff", !!diffHtml);
+  const diffSlot = el.querySelector(".diff-slot");
+  if (diffHtml) {
+    diffSlot.innerHTML = diffHtml;
+    // Compact args in the head still show the file path for quick
+    // scanning; the diff block has the full story below.
+    const fp = (tool.tool_input && tool.tool_input.file_path) || "";
+    el.querySelector(".args-inline").textContent = fp ? " · " + fp : "";
+  } else {
+    diffSlot.innerHTML = "";
+    const argsPreview = formatArgs(tool.tool_input);
+    el.querySelector(".args-inline").textContent = argsPreview ? " · " + argsPreview : "";
+  }
+  el.querySelector(".duration").textContent = done ? fmtDur(tool.duration_ms) : "…";
+
+  const resEl = el.querySelector(".result-inline");
+  const out = (tool.output || "").trim();
+  if (diffHtml) {
+    // Hide the inline result — the diff IS the result.
+    resEl.textContent = "";
+  } else {
+    resEl.textContent = done
+      ? (out ? "⎿ " + outputFirstLine(out) : "⎿ (no output)")
+      : "";
+  }
+}
+
+// ---- Edit/Write diff rendering ----
+// Build a +/- colored diff block for Edit, MultiEdit, and Write
+// tool calls. Returns an HTML string, or "" when the tool isn't
+// one of those kinds. The returned HTML is always escape-safe:
+// file contents and old/new strings are passed through `esc()`
+// before injection.
+function buildDiffHtmlForTool(tool) {
+  const name = tool && tool.tool_name;
+  const input = (tool && tool.tool_input) || {};
+  if (name === "Edit") {
+    return buildDiffBlockHtml(
+      input.file_path || "(unknown)",
+      input.old_string || "",
+      input.new_string || "",
+      "Edit",
+    );
+  }
+  if (name === "Write") {
+    // A Write is a full file replacement; we render it as pure
+    // additions (green) so the user can scan what's being committed
+    // to disk.
+    return buildDiffBlockHtml(
+      input.file_path || "(unknown)",
+      "",
+      input.content || "",
+      "Write",
+    );
+  }
+  if (name === "MultiEdit") {
+    const edits = Array.isArray(input.edits) ? input.edits : [];
+    if (!edits.length) return "";
+    // Render each edit as its own block; the file_path header
+    // repeats on each so the user knows which Edit lands where.
+    const fp = input.file_path || "(unknown)";
+    return edits.map((e, i) =>
+      buildDiffBlockHtml(
+        fp + " · edit " + (i + 1),
+        e.old_string || "",
+        e.new_string || "",
+        "Edit",
+      )
+    ).join("");
+  }
+  return "";
+}
+
+function buildDiffBlockHtml(filePath, oldText, newText, kind) {
+  const diff = diffLines(oldText, newText);
+  let adds = 0, dels = 0;
+  for (const d of diff) {
+    if (d.type === "add") adds++;
+    else if (d.type === "del") dels++;
+  }
+  const stats =
+    '<span class="diff-stat add">+' + adds + '</span>' +
+    '<span class="diff-stat del">-' + dels + '</span>';
+  const kindLabel = kind === "Write" ? "Create" : "Update";
+  const header =
+    '<div class="diff-header">' +
+      '<span class="diff-kind">' + kindLabel + "</span>" +
+      '<span class="diff-path">' + esc(filePath) + "</span>" +
+      '<span class="diff-stats">' + stats + "</span>" +
+    "</div>";
+  // Truncate absurdly large diffs so one mega-Edit can't blow up
+  // the rendering cost. ~400 lines is plenty for review.
+  const MAX_LINES = 400;
+  let truncated = false;
+  let lines = diff;
+  if (lines.length > MAX_LINES) {
+    lines = lines.slice(0, MAX_LINES);
+    truncated = true;
+  }
+  const body = lines.map((d) => {
+    const marker = d.type === "add" ? "+" : d.type === "del" ? "-" : " ";
+    return (
+      '<div class="diff-line ' + d.type + '">' +
+        '<span class="diff-marker">' + marker + "</span>" +
+        '<span class="diff-text">' + esc(d.line) + "</span>" +
+      "</div>"
+    );
+  }).join("");
+  const tail = truncated
+    ? '<div class="diff-line ctx"><span class="diff-marker">…</span>' +
+      '<span class="diff-text">(' + (diff.length - MAX_LINES) +
+      ' more lines truncated)</span></div>'
+    : "";
+  return '<div class="diff-block">' + header +
+    '<div class="diff-body">' + body + tail + "</div></div>";
+}
+
+// Line-level LCS diff. Returns an array of {type: 'ctx'|'add'|'del',
+// line: string}. Runs in O(m*n) time + memory, fine for the Edit
+// sizes (typically <200 lines on each side) we actually see from
+// the model.
+function diffLines(oldText, newText) {
+  const oldLines = (oldText || "").split("\n");
+  const newLines = (newText || "").split("\n");
+  const m = oldLines.length, n = newLines.length;
+  // Allocate a single typed array for the DP table to keep memory
+  // predictable. Int32Array stores cell counts; m+n+1 rows × n+1
+  // cols would be worst case but m*(n+1) is enough.
+  const L = [];
+  for (let i = 0; i <= m; i++) L.push(new Int32Array(n + 1));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) L[i][j] = L[i - 1][j - 1] + 1;
+      else L[i][j] = L[i - 1][j] >= L[i][j - 1] ? L[i - 1][j] : L[i][j - 1];
+    }
+  }
+  const out = [];
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (oldLines[i - 1] === newLines[j - 1]) {
+      out.unshift({type: "ctx", line: oldLines[i - 1]});
+      i--; j--;
+    } else if (L[i - 1][j] >= L[i][j - 1]) {
+      out.unshift({type: "del", line: oldLines[i - 1]});
+      i--;
+    } else {
+      out.unshift({type: "add", line: newLines[j - 1]});
+      j--;
+    }
+  }
+  while (i > 0) { i--; out.unshift({type: "del", line: oldLines[i]}); }
+  while (j > 0) { j--; out.unshift({type: "add", line: newLines[j]}); }
+  return out;
+}
+
+// ---- Received step (bundled tool_result envelope) ----
+function createReceivedEl(received) {
+  const el = document.createElement("div");
+  el.className = "received";
+  el.innerHTML =
+    '<div class="head">' +
+      '<span class="icon">📥</span>' +
+      '<span class="label"></span>' +
+      '<span class="head-summary"></span>' +
+    "</div>" +
+    '<div class="results"></div>';
+  el.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const mid = el.dataset.receivedMsgId;
+    if (mid) _openReceivedDrawer(mid);
+  });
+  updateReceivedEl(el, received);
+  return el;
+}
+
+function updateReceivedEl(el, received) {
+  const results = (received && received.results) || [];
+  const n = results.length;
+  el.querySelector(".label").textContent =
+    "received " + n + (n === 1 ? " result" : " results");
+
+  // One-line head summary: total content size, in case the per-row
+  // previews are clipped on small screens.
+  const totalChars = results.reduce((a, r) => a + (r.content || "").length, 0);
+  el.querySelector(".head-summary").textContent =
+    n > 0 ? "· " + totalChars.toLocaleString() + " chars total" : "";
+
+  // Per-result rows: marker + truncated tool_use_id + first line preview
+  const resultsEl = el.querySelector(".results");
+  resultsEl.innerHTML = "";
+  for (const r of results) {
+    const row = document.createElement("div");
+    row.className = "res-row" + (r.is_error ? " error" : "");
+    const marker = r.is_error ? "✗" : "✓";
+    const tid = (r.tool_use_id || "").slice(0, 10);
+    const firstLine = outputFirstLine(r.content || "") || "(empty)";
+    row.innerHTML =
+      '<span class="res-marker">' + esc(marker) + '</span>' +
+      '<span class="res-id">' + esc(tid) + '</span>' +
+      '<span class="res-preview"></span>';
+    row.querySelector(".res-preview").textContent = firstLine;
+    resultsEl.appendChild(row);
+  }
+
+  el.dataset.receivedMsgId = received ? received.message_id : "";
+}
+
+// ---- Sub-agent element (recursive) ----
+function createSubAgentEl(sub, depth) {
+  const el = document.createElement("div");
+  el.className = "sub-agent depth-" + Math.min(depth, 4);
+  el.dataset.frameId = sub.frame_id;
+  el.innerHTML =
+    '<div class="sa-head">' +
+      '<span class="sa-caret">▸</span>' +
+      '<span class="sa-role"></span>' +
+      '<span class="sa-purpose"></span>' +
+      '<span class="sa-summary"></span>' +
+      '<span class="sa-state"></span>' +
+    "</div>" +
+    '<div class="sa-returned"></div>' +
+    '<div class="sa-body"></div>';
+  el.querySelector(".sa-head").addEventListener("click", () => {
+    userTouchedSubAgents.add(sub.frame_id);
+    if (expandedSubAgents.has(sub.frame_id)) expandedSubAgents.delete(sub.frame_id);
+    else expandedSubAgents.add(sub.frame_id);
+    el.classList.toggle("expanded");
+  });
+  // Clicking the returned-preview row opens the drawer for the child's
+  // final message — so the user can read the full text the sub-agent
+  // handed back, without having to drill into the nested turn.
+  el.querySelector(".sa-returned").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const mid = el.dataset.returnedMsgId;
+    if (mid) _openMessageDrawer(mid);
+  });
+  updateSubAgentEl(el, sub, depth);
+  return el;
+}
+
+function updateSubAgentEl(el, sub, depth) {
+  // Same default-expanded policy as turns — the whole tree is visible
+  // on first render, the user collapses what they don't want to see.
+  if (!userTouchedSubAgents.has(sub.frame_id)) {
+    expandedSubAgents.add(sub.frame_id);
+  }
+
+  // Depth class (in case of re-parenting — unlikely but safe)
+  el.className = "sub-agent depth-" + Math.min(depth, 4) +
+    (expandedSubAgents.has(sub.frame_id) ? " expanded" : "");
+
+  el.querySelector(".sa-role").textContent = sub.role_name || "?";
+  el.querySelector(".sa-purpose").textContent = sub.purpose ? " · " + sub.purpose : "";
+  const stateEl = el.querySelector(".sa-state");
+  stateEl.textContent = sub.state;
+  stateEl.className = "sa-state " + sub.state;
+
+  // Summary line
+  const s = sub.summary || {};
+  const parts = [];
+  let totalSteps = 0, totalTools = 0, totalSubs = 0;
+  for (const t of (sub.turns || [])) {
+    const ts = t.summary || {};
+    totalSteps += ts.step_count || 0;
+    totalTools += ts.tool_count || 0;
+    totalSubs += ts.sub_agent_count || 0;
+  }
+  parts.push(totalSteps + " steps");
+  if (totalTools) parts.push(totalTools + " tools");
+  if (totalSubs) parts.push(totalSubs + " sub-agents");
+  if (s.duration_ms != null) parts.push(fmtDur(s.duration_ms));
+  el.querySelector(".sa-summary").textContent = "(" + parts.join(" · ") + ")";
+
+  // Returned-text preview row — always visible when the child has
+  // handed back something, so "what core received from this sub-agent"
+  // is a first-class glance, not a drill-down.
+  const retEl = el.querySelector(":scope > .sa-returned");
+  if (sub.returned_text) {
+    retEl.textContent = "⎿ " + outputFirstLine(sub.returned_text);
+    el.dataset.returnedMsgId = sub.returned_message_id || "";
+  } else {
+    retEl.textContent = "";
+    el.dataset.returnedMsgId = "";
+  }
+
+  // Body: render the child frame's todos panel (if any) + turns
+  // recursively. Keep the todos panel as the first child of .sa-body
+  // so it's always above the nested stream for visual alignment with
+  // the root-level todos panel.
+  const body = el.querySelector(":scope > .sa-body");
+  _ensureSubTodosPanel(body, sub.todos || []);
+  reconcileTurns(body, sub.turns || [], depth + 1);
+}
+
+function _ensureSubTodosPanel(bodyEl, todos) {
+  let panel = bodyEl.querySelector(":scope > .todos-panel.sub");
+  if (!todos || todos.length === 0) {
+    if (panel) panel.remove();
+    return;
+  }
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "todos-panel sub";
+    bodyEl.prepend(panel);
+  }
+  _renderTodosPanel(panel, todos);
+}
+
+function reconcileTurns(container, turns, depth) {
+  const existing = new Map();
+  container.querySelectorAll(":scope > .turn").forEach((el) => {
+    existing.set(el.dataset.turnId, el);
+  });
+
+  const wanted = new Set();
+  let prev = null;
+  for (const turn of turns) {
+    wanted.add(turn.id);
+    let el = existing.get(turn.id);
+    if (!el) {
+      el = createTurnEl(turn);
+      if (prev) prev.after(el);
+      else container.prepend(el);
+    } else {
+      updateTurnEl(el, turn);
+    }
+    prev = el;
+  }
+  for (const [id, el] of existing) {
+    if (!wanted.has(id)) el.remove();
+  }
+}
+
+// ---- Drawer ----
+function _openMessageDrawer(messageId) {
+  drawerSource = {kind: "message", id: messageId};
+  _refreshDrawer();
+  _showDrawer();
+}
+function _openToolDrawer(toolUseId) {
+  drawerSource = {kind: "tool", id: toolUseId};
+  _refreshDrawer();
+  _showDrawer();
+}
+function _openReceivedDrawer(messageId) {
+  drawerSource = {kind: "received", id: messageId};
+  _refreshDrawer();
+  _showDrawer();
+}
+function _showDrawer() {
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawer-overlay").classList.add("open");
+}
+function _closeDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("drawer-overlay").classList.remove("open");
+  drawerSource = null;
+}
+
+function _refreshDrawer() {
+  if (!drawerSource || !lastView) return;
+  let title = "details";
+  let html = '<div class="drawer-hint">not found in current view</div>';
+  if (drawerSource.kind === "message") {
+    const hit = findMessage(lastView, drawerSource.id);
+    if (hit) { title = (hit.from_ || "message") + " · message"; html = buildMessageDrawerHtml(hit); }
+  } else if (drawerSource.kind === "tool") {
+    const hit = findTool(lastView, drawerSource.id);
+    if (hit) { title = hit.tool_name || "tool"; html = buildToolDrawerHtml(hit); }
+  } else if (drawerSource.kind === "received") {
+    const hit = findReceived(lastView, drawerSource.id);
+    if (hit) { title = "received · " + (hit.results || []).length + " result(s)"; html = buildReceivedDrawerHtml(hit); }
+  }
+  document.getElementById("drawer-title").textContent = title;
+  document.getElementById("drawer-body").innerHTML = html;
+}
+
+function findMessage(view, messageId) {
+  // Walk all turns + sub-agent nested turns
+  function walkTurns(turns) {
+    for (const t of turns || []) {
+      if (t.user_message && t.user_message.message_id === messageId) return t.user_message;
+      if (t.final_message && t.final_message.message_id === messageId) return t.final_message;
+      for (const step of t.steps || []) {
+        if (step.kind === "message" && step.message && step.message.message_id === messageId) {
+          return step.message;
+        }
+        if (step.kind === "sub_agent" && step.sub_agent) {
+          const found = walkTurns(step.sub_agent.turns);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }
+  return walkTurns(view.turns);
+}
+
+function findTool(view, toolUseId) {
+  function walkTurns(turns) {
+    for (const t of turns || []) {
+      for (const step of t.steps || []) {
+        if (step.kind === "tool" && step.tool && step.tool.tool_use_id === toolUseId) {
+          return step.tool;
+        }
+        if (step.kind === "sub_agent" && step.sub_agent) {
+          const found = walkTurns(step.sub_agent.turns);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }
+  return walkTurns(view.turns);
+}
+
+function findReceived(view, messageId) {
+  function walkTurns(turns) {
+    for (const t of turns || []) {
+      for (const step of t.steps || []) {
+        if (step.kind === "received" && step.received && step.received.message_id === messageId) {
+          return step.received;
+        }
+        if (step.kind === "sub_agent" && step.sub_agent) {
+          const found = walkTurns(step.sub_agent.turns);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }
+  return walkTurns(view.turns);
+}
+
+function drawerKv(k, v) {
+  return '<div class="drawer-kv"><span class="k">' + esc(k) + '</span>' +
+    '<span class="v">' + esc(v == null ? "-" : String(v)) + '</span></div>';
+}
+function drawerSec(t) { return '<div class="drawer-sec">' + esc(t) + '</div>'; }
+// `kind` is one of: text | tool_use | tool_result | usage | thinking
+// (or omitted for an unlabeled neutral block). CSS [data-kind] picks
+// the colored border and auto-label.
+function drawerPre(s, kind) {
+  const attr = kind ? ' data-kind="' + esc(kind) + '"' : '';
+  return '<div class="drawer-pre"' + attr + '>' + esc(s == null ? "" : String(s)) + '</div>';
+}
+
+function buildMessageDrawerHtml(msg) {
+  let html = "";
+  html += drawerSec("message");
+  html += drawerKv("from → to", (msg.from_ || "?") + " → " + (msg.to || "?"));
+  html += drawerKv("message_id", msg.message_id);
+  html += drawerKv("timestamp", new Date(msg.timestamp * 1000).toLocaleString());
+
+  const blocks = msg.content || [];
+  html += drawerSec("content blocks (" + blocks.length + ")");
+  if (!blocks.length) {
+    html += '<div class="drawer-hint">(empty)</div>';
+  } else {
+    for (const b of blocks) {
+      if (!b || typeof b !== "object") continue;
+      const type = b.type || "?";
+      if (type === "text") {
+        html += drawerPre(b.text || "", "text");
+      } else if (type === "tool_use") {
+        html += drawerKv("name", b.name || "");
+        html += drawerKv("id", b.id || "");
+        html += drawerPre(JSON.stringify(b.input || {}, null, 2), "tool_use");
+      } else if (type === "tool_result") {
+        html += drawerKv("tool_use_id", b.tool_use_id || "");
+        if (b.is_error) html += drawerKv("is_error", "true");
+        const c = typeof b.content === "string" ? b.content : JSON.stringify(b.content || "", null, 2);
+        html += drawerPre(c, "tool_result");
+      } else if (type === "thinking") {
+        html += drawerPre(b.thinking || "", "thinking");
+      } else {
+        html += drawerKv("type", type);
+        html += drawerPre(JSON.stringify(b, null, 2));
+      }
+    }
+  }
+
+  if (msg.annotation) {
+    const a = msg.annotation;
+    html += drawerSec("annotation");
+    if (a.stop_reason) html += drawerKv("stop_reason", a.stop_reason);
+    if (a.llm_request_id) html += drawerKv("request_id", a.llm_request_id);
+    if (a.duration_ms != null) html += drawerKv("duration", fmtDur(a.duration_ms));
+    if (a.usage) {
+      html += drawerPre(JSON.stringify(a.usage, null, 2), "usage");
+    }
+    if (a.thinking && a.thinking.length) {
+      for (const t of a.thinking) html += drawerPre(t, "thinking");
+    }
+  }
+  return html;
+}
+
+function buildToolDrawerHtml(tool) {
+  let html = "";
+  html += drawerSec("tool");
+  html += drawerKv("name", tool.tool_name);
+  html += drawerKv("tool_use_id", tool.tool_use_id);
+  const done = tool.completed_at != null;
+  html += drawerKv("status", done ? (tool.is_error ? "error" : "done") : "running");
+  if (done && tool.duration_ms != null) html += drawerKv("duration", fmtDur(tool.duration_ms));
+
+  html += drawerSec("input");
+  html += drawerPre(JSON.stringify(tool.tool_input || {}, null, 2), "tool_use");
+  html += drawerSec("output" + (tool.is_error ? " (error)" : ""));
+  if (done) {
+    html += drawerPre(tool.output || "(empty)", "tool_result");
+  } else {
+    html += '<div class="drawer-hint">(running…)</div>';
+  }
+  return html;
+}
+
+function buildReceivedDrawerHtml(received) {
+  let html = "";
+  html += drawerSec("received");
+  html += drawerKv("message_id", received.message_id);
+  html += drawerKv("timestamp", new Date(received.timestamp * 1000).toLocaleString());
+  html += drawerKv("results", String((received.results || []).length));
+
+  for (let i = 0; i < (received.results || []).length; i++) {
+    const r = received.results[i];
+    html += drawerSec("result " + (i + 1) + (r.is_error ? " (error)" : ""));
+    html += drawerKv("tool_use_id", r.tool_use_id);
+    html += drawerPre(r.content || "(empty)", "tool_result");
+  }
+  return html;
+}
+
+// ---- WebSocket ----
+function scheduleRetry(fn, ms) {
+  if (wsRetryTimer) clearTimeout(wsRetryTimer);
+  wsRetryTimer = setTimeout(() => { wsRetryTimer = null; fn(); }, ms);
+}
+
+function connect() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  const urlSid = new URLSearchParams(location.search).get("session");
+  if (urlSid) { connectTo(urlSid); return; }
+  fetch("/api/sessions")
+    .then((r) => r.json())
+    .then((d) => {
+      const sessions = (d.sessions || []).slice()
+        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+      if (sessions.length > 0) {
+        connectTo(sessions[0].session_id);
+      } else {
+        statusEl.textContent = "no session";
+        statusEl.className = "status error";
+        showEmpty("no session", "type below to start, or pick one from ☰");
+        scheduleRetry(connect, 2500);
+      }
+    })
+    .catch(() => {
+      statusEl.textContent = "no server";
+      statusEl.className = "status error";
+      scheduleRetry(connect, 2500);
+    });
+}
+
+function connectTo(sid) {
+  if (ws) {
+    try { ws.onclose = null; ws.close(); } catch (_) {}
+    ws = null;
+  }
+  if (wsRetryTimer) { clearTimeout(wsRetryTimer); wsRetryTimer = null; }
+  currentSid = sid;
+  lastView = null;
+  expandedTurns.clear();
+  expandedSubAgents.clear();
+  streamEl.innerHTML = "";
+  applyPulse({active: false});
+  showEmpty("loading session", "…");
+  statusEl.textContent = "connecting";
+  statusEl.className = "status";
+  metaEl.textContent = sid.slice(0, 12) + " · connecting…";
+  const socket = new WebSocket(
+    "ws://" + location.hostname + ":" + WS_PORT + "/ws/view/sessions/" + sid
+  );
+  ws = socket;
+  socket.onopen = () => {
+    statusEl.textContent = "live";
+    statusEl.className = "status connected";
+  };
+  socket.onclose = () => {
+    if (ws === socket && currentSid === sid) {
+      statusEl.textContent = "disconnected";
+      statusEl.className = "status error";
+      scheduleRetry(connect, 1500);
+    }
+  };
+  socket.onerror = () => {};
+  socket.onmessage = (e) => {
+    let view;
+    try { view = JSON.parse(e.data); } catch (_) { return; }
+    render(view);
+  };
+}
+
+// ---- Actions ----
+async function _createSession() {
+  const r = await fetch("/api/sessions", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: "{}",
+  });
+  if (!r.ok) throw new Error("create failed: " + r.status);
+  const d = await r.json();
+  return d.session_id;
+}
+
+async function _sendInput() {
+  const text = (inputEl.value || "").trim();
+  if (!text) return;
+  sendBtn.disabled = true;
+  const origLabel = sendBtn.textContent;
+  sendBtn.textContent = "…";
+  try {
+    let sid = currentSid;
+    if (!sid) {
+      sid = await _createSession();
+      connectTo(sid);
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    const r = await fetch("/api/sessions/" + encodeURIComponent(sid) + "/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text}),
+    });
+    if (!r.ok && r.status !== 202) {
+      const err = await r.text();
+      throw new Error("send failed: " + err);
+    }
+    inputEl.value = "";
+    autosize();
+  } catch (e) {
+    alert(String(e.message || e));
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = origLabel;
+    inputEl.focus();
+  }
+}
+
+async function _stopRun() {
+  if (!currentSid) return;
+  stopBtn.disabled = true;
+  try {
+    const r = await fetch("/api/sessions/" + encodeURIComponent(currentSid) + "/cancel", {method: "POST"});
+    if (!r.ok) throw new Error("cancel failed: " + r.status);
+  } catch (e) {
+    alert(String(e.message || e));
+    if (lastView && lastView.pulse && lastView.pulse.active) stopBtn.disabled = false;
+  }
+}
+
+async function _newSession() {
+  try {
+    const sid = await _createSession();
+    connectTo(sid);
+    _hidePicker();
+  } catch (e) {
+    alert(String(e.message || e));
+  }
+}
+
+// ---- Session picker ----
+function _togglePicker() {
+  const panel = document.getElementById("picker-panel");
+  const overlay = document.getElementById("picker-overlay");
+  if (panel.classList.contains("open")) {
+    _hidePicker();
+  } else {
+    panel.classList.add("open");
+    overlay.classList.add("open");
+    _loadSessions();
+  }
+}
+function _hidePicker() {
+  document.getElementById("picker-panel").classList.remove("open");
+  document.getElementById("picker-overlay").classList.remove("open");
+}
+async function _loadSessions() {
+  const body = document.getElementById("picker-body");
+  body.innerHTML = '<div class="picker-empty">loading…</div>';
+  let live = [], arch = [];
+  try {
+    const [lr, ar] = await Promise.all([
+      fetch("/api/sessions").then((r) => r.json()),
+      fetch("/api/sessions/archived").then((r) => r.json()),
+    ]);
+    live = lr.sessions || [];
+    arch = ar.sessions || [];
+  } catch (e) {
+    body.innerHTML = '<div class="picker-empty">load failed</div>';
+    return;
+  }
+  let html = "";
+  html += '<div class="picker-sec">live · ' + live.length + "</div>";
+  if (!live.length) {
+    html += '<div class="picker-empty">(none)</div>';
+  } else {
+    live.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    for (const s of live) {
+      const cur = s.session_id === currentSid ? " current" : "";
+      const prev = s.preview || "(no input yet)";
+      const forkBadge = s.parent_session_id
+        ? ' <span class="fork-badge" data-parent="' + esc(s.parent_session_id) +
+          '" title="forked from ' + esc(s.parent_session_id) + ' at event ' +
+          (s.forked_from_event_id || "?") + ' — click to open parent">⑂ ' +
+          esc(s.parent_session_id.slice(0, 8)) + "@" + (s.forked_from_event_id || "?") + "</span>"
+        : "";
+      html +=
+        '<div class="picker-item' + cur + '" data-sid="' + esc(s.session_id) + '">' +
+        '<span class="mk">●</span>' +
+        '<span class="sid">' + esc(s.session_id.slice(0, 12)) + "</span>" +
+        forkBadge +
+        '<span class="prev">' + esc(prev) + "</span>" +
+        '<span class="meta-line">' +
+        esc(s.root_role_name || "") + " · " + esc(s.root_model || "") + " · " + esc(s.state || "") +
+        "</span></div>";
+    }
+  }
+  html += '<div class="picker-sec">archived · ' + arch.length + "</div>";
+  if (!arch.length) {
+    html += '<div class="picker-empty">(none)</div>';
+  } else {
+    for (const s of arch) {
+      const cur = s.session_id === currentSid ? " current" : "";
+      const prev = s.preview || "(" + (s.event_count || 0) + " events)";
+      const ts = s.last_event_at ? new Date(s.last_event_at * 1000).toLocaleString() : "";
+      const forkBadge = s.parent_session_id
+        ? ' <span class="fork-badge" data-parent="' + esc(s.parent_session_id) +
+          '" title="forked from ' + esc(s.parent_session_id) + ' at event ' +
+          (s.forked_from_event_id || "?") + ' — click to open parent">⑂ ' +
+          esc(s.parent_session_id.slice(0, 8)) + "@" + (s.forked_from_event_id || "?") + "</span>"
+        : "";
+      html +=
+        '<div class="picker-item arch' + cur + '" data-sid="' + esc(s.session_id) + '">' +
+        '<span class="mk">○</span>' +
+        '<span class="sid">' + esc(s.session_id.slice(0, 12)) + "</span>" +
+        forkBadge +
+        '<span class="prev">' + esc(prev) + "</span>" +
+        '<span class="meta-line">' + esc(ts) + " · " + (s.event_count || 0) + " events</span>" +
+        "</div>";
+    }
+  }
+  body.innerHTML = html;
+  // Fork badge — clicking navigates to the parent session, not the
+  // current item. Stop propagation so the outer picker-item click
+  // handler doesn't fire simultaneously.
+  body.querySelectorAll(".fork-badge").forEach((n) => {
+    n.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const parent = n.getAttribute("data-parent");
+      if (parent) { connectTo(parent); _hidePicker(); }
+    });
+  });
+  body.querySelectorAll(".picker-item").forEach((n) => {
+    n.addEventListener("click", () => {
+      const sid = n.getAttribute("data-sid");
+      if (sid) { connectTo(sid); _hidePicker(); }
+    });
+  });
+}
+
+// ---- Settings modal removed in preset-flow migration. ----
+// The session-scoped live-editor has been deleted; preset/agent
+// editing will return as a separate admin page backed by the
+// file-based /api/admin/* API. Kept the marker so future greps
+// can find this landing spot.
+// ---- Input autosize + hotkeys ----
+function autosize() {
+  inputEl.style.height = "auto";
+  const h = Math.min(inputEl.scrollHeight, 140);
+  inputEl.style.height = h + "px";
+}
+inputEl.addEventListener("input", autosize);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    _sendInput();
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { _closeDrawer(); _hidePicker(); }
+});
+
+connect();
+</script>
+</body>
+</html>

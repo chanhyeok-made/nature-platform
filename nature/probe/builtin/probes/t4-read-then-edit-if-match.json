@@ -1,0 +1,41 @@
+{
+  "id": "t4-read-then-edit-if-match",
+  "title": "Read a file, edit only if a specific token is present",
+  "tier": 4,
+  "dimensions": [
+    "tool.result.consume",
+    "edit.discipline",
+    "conditional"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "status.txt",
+        "content": "TODO: ship v2\n"
+      }
+    ]
+  },
+  "prompt": "Read `{workspace}/status.txt`. If its content contains the word `TODO`, use Edit on `{workspace}/status.txt` to replace that exact word with `DONE`. If it doesn't contain `TODO`, do nothing and emit no Edit tool call. Final answer should be either `changed` or `unchanged` on a single line.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Read"
+    },
+    {
+      "kind": "file_state",
+      "path": "status.txt",
+      "contains": "DONE"
+    },
+    {
+      "kind": "final_text",
+      "contains": "changed"
+    }
+  ],
+  "max_turns": 5,
+  "timeout_sec": 120
+}

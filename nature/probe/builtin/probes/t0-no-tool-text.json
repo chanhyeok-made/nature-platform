@@ -1,0 +1,23 @@
+{
+  "id": "t0-no-tool-text",
+  "title": "Return plain text, no tools",
+  "tier": 0,
+  "dimensions": [
+    "text_baseline",
+    "rule.follow"
+  ],
+  "allowed_tools": [],
+  "prompt": "What is 7 times 6? Answer with just the number, nothing else.",
+  "success": [
+    {
+      "kind": "final_text",
+      "regex": "\\b42\\b"
+    },
+    {
+      "kind": "turn_bound",
+      "max_turns": 1
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 30
+}

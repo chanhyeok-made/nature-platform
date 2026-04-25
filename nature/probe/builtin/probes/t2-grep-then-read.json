@@ -1,0 +1,49 @@
+{
+  "id": "t2-grep-then-read",
+  "title": "Grep to locate, then Read to answer",
+  "tier": 2,
+  "dimensions": [
+    "tool.emit",
+    "tool.result.consume",
+    "multi_turn_state"
+  ],
+  "allowed_tools": [
+    "Grep",
+    "Read"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "a.py",
+        "content": "# no match here\n"
+      },
+      {
+        "path": "b.py",
+        "content": "SECRET_TOKEN = 'abc123'\n"
+      },
+      {
+        "path": "c.py",
+        "content": "pass\n"
+      }
+    ]
+  },
+  "prompt": "Find (in {workspace}) which file defines `SECRET_TOKEN`, then read that file to get the token's value. Return just the token value (no quotes, no prefix).",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Grep"
+    },
+    {
+      "kind": "tool_use",
+      "at_index": 1,
+      "name": "Read"
+    },
+    {
+      "kind": "final_text",
+      "contains": "abc123"
+    }
+  ],
+  "max_turns": 5,
+  "timeout_sec": 90
+}

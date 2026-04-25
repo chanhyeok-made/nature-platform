@@ -1,0 +1,31 @@
+{
+  "id": "t8-swap-operator",
+  "title": "Fix a one-character operator bug",
+  "tier": 8,
+  "dimensions": [
+    "edit.discipline",
+    "reasoning"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "cmp.py",
+        "content": "def is_positive(x):\n    return x < 0  # bug\n"
+      }
+    ]
+  },
+  "prompt": "The function `is_positive` in `{workspace}/cmp.py` incorrectly returns True for negative numbers. Change the comparison operator so it correctly returns True when `x > 0`. Don't add or remove other lines. Final answer: just `ok`.",
+  "success": [
+    {
+      "kind": "file_state",
+      "path": "cmp.py",
+      "regex": "return x > 0"
+    }
+  ],
+  "max_turns": 5,
+  "timeout_sec": 120
+}

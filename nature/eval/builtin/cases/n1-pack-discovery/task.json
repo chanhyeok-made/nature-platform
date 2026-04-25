@@ -1,0 +1,22 @@
+{
+  "id": "n1-pack-discovery",
+  "title": "Pack discovery loader for user/project extensions",
+  "category": "feature",
+  "tags": ["packs", "new-module", "nature"],
+  "size": "medium",
+  "prompt": "nature의 Pack 시스템에 **파일 기반 third-party Pack discovery**를 추가해야 합니다.\n\n## 컨텍스트\n\n- 현재 built-in Pack들은 `nature/packs/builtin/`에 Python 모듈로 있고 `install_builtin_packs(registry)`가 명시적으로 호출해 등록합니다.\n- 이제 유저가 드롭한 확장 Pack도 자동으로 로딩되어야 합니다. 예상 레이아웃:\n\n      ~/.nature/packs/<name>/\n          pack.json   # 매니페스트\n          pack.py     # `install(registry) -> None` 를 export\n\n      <project>/.nature/packs/<name>/  (같은 구조, 프로젝트 레이어)\n\n## 요구사항\n\n1. **새 모듈 `nature/packs/discovery.py`** 작성.\n   - `PackManifest` (pydantic): `name`, `version`, `description=''`, `depends_on=[]`, `provides_events=[]`, `entry='pack'` 필드. `extra='forbid'`.\n   - `discover_packs(project_dir=None)` 제너레이터: user ∪ project 디렉토리 스캔, `(pack_dir, manifest)` 튜플 yield. 매니페스트 파싱 실패 시 경고 로그 + skip.\n   - `install_discovered_packs(registry, project_dir=None)` → `list[str]`: 각 pack을 동적 import (`importlib.util.spec_from_file_location` + `submodule_search_locations=[pack_dir]` 로 neighbor import 가능하게), `install(registry)` 호출, 성공 pack 이름 리스트 반환.\n   - 실패 유형 전부 경고 + skip (하드 페일은 `_load_pack` 통해 개별 호출로만).\n\n2. **`nature/frame/manager.py`의 `AreaManager.__init__`에 wiring 추가**: `install_builtin_packs` 직후에 `install_discovered_packs(self._pack_registry, project_dir=self._cwd)` 호출. 단, 호출자가 자기 `PackRegistry()`를 넘긴 경우(테스트 isolation)에는 skip.\n\n## 스킵 정책 (경고 + 로그 후 무시)\n\n- `pack.json` 없거나 파싱 실패\n- 스키마 검증 실패\n- entry 모듈 파일(`<entry>.py`) 없음\n- 모듈 import 중 예외\n- `install()` 호출 중 예외\n- `install` 속성 없음\n\n## 수용 테스트\n\n`tests/test_pack_discovery.py` 의 모든 테스트가 통과해야 합니다. 이 파일이 이미 작업 공간에 주입되어 있으므로 기대하는 API 시그니처의 정확한 모양은 그 테스트가 명세입니다.\n\n## 제약\n\n- 기존 테스트 (`.venv/bin/python -m pytest -q`) 가 깨지면 안 됩니다.\n- 외부 패키지 추가 의존 금지.\n- `discovery.py` 구현 시 `sys.path` 직접 조작 대신 spec의 `submodule_search_locations` 쓰기 권장.",
+  "target": {
+    "repo": "local",
+    "ref": "b6b8ff5^"
+  },
+  "setup": {
+    "type": "apply_diff_from_commit",
+    "apply_commit": "b6b8ff5",
+    "diff_scope": ["tests/test_pack_discovery.py"]
+  },
+  "acceptance": {
+    "type": "pytest",
+    "node_ids": ["tests/test_pack_discovery.py"],
+    "timeout_sec": 360
+  }
+}

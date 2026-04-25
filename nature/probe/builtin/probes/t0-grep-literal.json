@@ -1,0 +1,27 @@
+{
+  "id": "t0-grep-literal",
+  "title": "Emit Grep tool_use for literal pattern",
+  "tier": 0,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Grep"
+  ],
+  "prompt": "Call the Grep tool to search for the literal string `TODO` across all files. Use pattern `TODO`.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Grep",
+      "input_regex": {
+        "pattern": "TODO"
+      }
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}

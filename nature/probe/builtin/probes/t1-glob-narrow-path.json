@@ -1,0 +1,52 @@
+{
+  "id": "t1-glob-narrow-path",
+  "title": "Glob within a given subdirectory",
+  "tier": 1,
+  "dimensions": [
+    "tool.emit",
+    "reasoning"
+  ],
+  "allowed_tools": [
+    "Glob"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "src/a.py",
+        "content": "x = 1\n"
+      },
+      {
+        "path": "src/b.py",
+        "content": "y = 2\n"
+      },
+      {
+        "path": "tests/test_a.py",
+        "content": "def test(): pass\n"
+      }
+    ]
+  },
+  "prompt": "List the Python files inside the `{workspace}/src/` directory only. Do NOT return files from `{workspace}/tests/`. Use the Glob tool.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Glob",
+      "input_regex": {
+        "pattern": "\\.py"
+      }
+    },
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Glob",
+      "input_regex": {
+        "path": "(?i)src/?$|src/\\*"
+      }
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}

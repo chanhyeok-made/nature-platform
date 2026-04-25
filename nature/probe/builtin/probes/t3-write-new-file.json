@@ -1,0 +1,29 @@
+{
+  "id": "t3-write-new-file",
+  "title": "Write a brand new file with given content",
+  "tier": 3,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Write"
+  ],
+  "prompt": "Use the Write tool to create a file at `{workspace}/out/answer.txt` with exactly the content (no extra newlines):\n\n```\n42 is the answer\n```",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Write",
+      "input_regex": {
+        "file_path": "answer\\.txt$"
+      }
+    },
+    {
+      "kind": "file_state",
+      "path": "out/answer.txt",
+      "contains": "42 is the answer"
+    }
+  ],
+  "max_turns": 3,
+  "timeout_sec": 60
+}

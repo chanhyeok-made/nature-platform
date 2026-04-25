@@ -1,0 +1,19 @@
+{
+  "root_agent": "core",
+  "agents": [
+    "core",
+    "researcher",
+    "analyzer",
+    "implementer",
+    "reviewer",
+    "judge"
+  ],
+  "model_overrides": {
+    "core": "anthropic::claude-haiku-4-5",
+    "researcher": "anthropic::claude-haiku-4-5",
+    "analyzer": "local-ollama::phi4:14b",
+    "implementer": "anthropic::claude-haiku-4-5",
+    "reviewer": "local-ollama::phi4:14b",
+    "judge": "local-ollama::phi4:14b"
+  }
+}

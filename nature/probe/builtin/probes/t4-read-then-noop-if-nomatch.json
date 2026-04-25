@@ -1,0 +1,40 @@
+{
+  "id": "t4-read-then-noop-if-nomatch",
+  "title": "Read a file, correctly decline to edit when no match",
+  "tier": 4,
+  "dimensions": [
+    "tool.result.consume",
+    "conditional"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Edit"
+  ],
+  "workspace": {
+    "files": [
+      {
+        "path": "status.txt",
+        "content": "all good, nothing to do\n"
+      }
+    ]
+  },
+  "prompt": "Read `{workspace}/status.txt`. If its content contains the word `TODO`, use Edit to replace it with `DONE`. If it does NOT contain `TODO`, do NOT emit an Edit tool call. Final answer should be either `changed` or `unchanged` on a single line.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Read"
+    },
+    {
+      "kind": "final_text",
+      "contains": "unchanged"
+    },
+    {
+      "kind": "file_state",
+      "path": "status.txt",
+      "contains": "all good"
+    }
+  ],
+  "max_turns": 4,
+  "timeout_sec": 90
+}

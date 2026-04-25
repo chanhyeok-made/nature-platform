@@ -1,0 +1,27 @@
+{
+  "id": "t0-glob-basic",
+  "title": "Emit Glob tool_use with given pattern",
+  "tier": 0,
+  "dimensions": [
+    "tool.emit"
+  ],
+  "allowed_tools": [
+    "Glob"
+  ],
+  "prompt": "Call the Glob tool with pattern `**/*.py`. Do not answer in prose; only emit the tool_use.",
+  "success": [
+    {
+      "kind": "tool_use",
+      "at_index": 0,
+      "name": "Glob",
+      "input_contains": {
+        "pattern": "**/*.py"
+      }
+    },
+    {
+      "kind": "no_tool_error"
+    }
+  ],
+  "max_turns": 2,
+  "timeout_sec": 60
+}
